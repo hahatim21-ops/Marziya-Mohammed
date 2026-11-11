@@ -29,11 +29,12 @@ function frame(t) {
   const scrolling = !!(lenisRef && (lenisRef.isScrolling || Math.abs(lenisRef.velocity) > 0.3));
   stillFor = scrolling ? 0 : stillFor + dt;
   const animateBackground = stillFor > 0.12;
-  if (animateBackground && curtains && curtains.active && !curtainsDisabled) {
+  // frame-rate watchdog, measured while the page is still (scrolling has its own cost)
+  if (animateBackground && !curtainsDisabled && anyRendererActive()) {
     if (dt > 1 / 45) slowFor += dt; else slowFor = Math.max(0, slowFor - dt * 0.5);
     if (slowFor > 2) {
       curtainsDisabled = true;
-      curtains.disable('low fps');
+      for (const r of renderers.values()) r.disable('low fps');
     }
   }
   for (const s of systems) {
@@ -58,7 +59,33 @@ document.addEventListener('visibilitychange', () => {
   } else kick();
 });
 
-let curtains = null;
+// One WebGL renderer (curtain sway + chandelier sway) per visible design page, so
+// every chandelier on screen moves. At most MAX_GL contexts are kept alive.
+const renderers = new Map(); // page -> CurtainRenderer
+const MAX_GL = 3;
+let glOk = true;
+let useGL = false;
+function anyRendererActive() {
+  for (const r of renderers.values()) if (r.active) return true;
+  return false;
+}
+function rendererFor(page) {
+  let r = renderers.get(page);
+  if (r || !useGL || !glOk || curtainsDisabled) return r || null;
+  if (renderers.size >= MAX_GL) {
+    // release the renderer of a page that is off screen
+    for (const [p, old] of renderers) {
+      if (!p.visible) { old.destroy(); removeSystem(old); renderers.delete(p); break; }
+    }
+    if (renderers.size >= MAX_GL) return null;
+  }
+  r = new CurtainRenderer();
+  if (!r.ok) { glOk = false; return null; }
+  renderers.set(page, r);
+  addSystem(r);
+  return r;
+}
+
 let petals = null;
 let dust = null;
 
@@ -119,8 +146,7 @@ export function initFx(opts = {}) {
   const reduced = ENV.reducedMotion;
 
   if (!reduced) {
-    curtains = new CurtainRenderer();
-    if (!curtains.ok) curtains = null;
+    useGL = true;
     petals = createPetals(document.getElementById('petals'));
     dust = createDust(document.getElementById('dust'));
     fxApi.burst = (x, y, n) => { petals.burst(x, y, n); addSystem(petals); };
@@ -128,8 +154,6 @@ export function initFx(opts = {}) {
     fxApi.drizzle = (n, sec) => { petals.drizzle(n, sec); addSystem(petals); };
     onActive((page) => {
       petals.setDensity(page.id === 'p06' ? 1.8 : 1);
-      if (curtains && !curtainsDisabled && page.data) curtains.attach(page);
-      else if (curtains && page.id === 'p01') curtains.detach();
     });
   }
 
@@ -146,8 +170,13 @@ export function initFx(opts = {}) {
       } else if (fx) {
         removeSystem(fx);
       }
-      if (curtains && !on && curtains.page === page) curtains.pause();
-      if (curtains && on && curtains.page === page) curtains.resume();
+      if (on) {
+        const r = rendererFor(page);
+        if (r) { r.attach(page); r.resume(); }
+      } else {
+        const r = renderers.get(page);
+        if (r) r.pause();
+      }
     },
     drizzle(n, sec) { fxApi.drizzle(n, sec); },
     startPetals() {
@@ -160,10 +189,9 @@ export function initFx(opts = {}) {
       for (const fx of pageFx.values()) fx.resize();
       if (petals) petals.resize();
       if (dust) dust.resize();
-      if (curtains) curtains.resize();
+      for (const r of renderers.values()) r.resize();
     },
   };
-  if (curtains) addSystem(curtains);
   void pages;
   return api;
 }

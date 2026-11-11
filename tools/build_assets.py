@@ -19,7 +19,7 @@ import numpy as np
 from PIL import Image, ImageFilter
 
 sys.path.insert(0, os.path.dirname(__file__))
-from masks import detect_page, ellipse, pct_box_to_px, bbox_of, luminance  # noqa: E402
+from masks import detect_page, detect_line, ellipse, pct_box_to_px, bbox_of, luminance  # noqa: E402
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 SRC = os.path.join(ROOT, 'source')
@@ -147,6 +147,14 @@ def build_text_page(page, use_lama, manifest, fx_only=False):
     union = np.zeros((H, W), np.uint8)
     for e in erase.values():
         union |= e
+    # text removed from the page entirely (inpainted, never shown as an overlay)
+    removed = np.zeros((H, W), np.uint8)
+    for item in page.get('erase', []):
+        core = detect_line(rgb, item, page['polarity'], W, H, s)
+        g = 18 if light else 0
+        removed |= cv2.dilate(core, ellipse(int(2 * g * s) + 1)) if g else cv2.dilate(core, ellipse(int(11 * s) | 1))
+    lines_union = union.copy()  # only these pixels are cut back in as overlays
+    union = union | removed
 
     # ownership: every erased pixel belongs to its nearest line core
     ids = [l['id'] for l in page['lines']]
@@ -155,7 +163,7 @@ def build_text_page(page, use_lama, manifest, fx_only=False):
         inv = np.where(cores[lid] > 0, 0, 255).astype(np.uint8)
         dists.append(cv2.distanceTransform(inv, cv2.DIST_L2, 5))
     owner = np.argmin(np.stack(dists, 0), 0)
-    own = {lid: ((owner == i) & (union > 0)).astype(np.uint8) * 255 for i, lid in enumerate(ids)}
+    own = {lid: ((owner == i) & (lines_union > 0)).astype(np.uint8) * 255 for i, lid in enumerate(ids)}
 
     clean = inpaint(rgb, union, use_lama)
     pdir = os.path.join(OUT, pid)
@@ -503,10 +511,32 @@ def build_cover(manifest):
     dark = ((Ls < paper_l - 6) & inside_big).astype(np.uint8) * 255
     fm = np.maximum(fm, cv2.bitwise_and(dark, cv2.dilate(fm, ellipse(3 * up + 1))))
     fm = cv2.morphologyEx(fm, cv2.MORPH_CLOSE, ellipse(2 * up + 1))
-    fm = cv2.dilate(fm, ellipse(int(5 * up * s) | 1))
-    fm = cv2.GaussianBlur(fm.astype(np.float32), (0, 0), 0.9 * up)
-    fm = np.clip((fm - 110) * 2.4, 0, 255)
-    fm = cv2.resize(fm, (W, H), interpolation=cv2.INTER_AREA)
+    fm = cv2.dilate(fm, ellipse(int(2 * up * s) | 1))
+    face = (cv2.resize(fm, (W, H), interpolation=cv2.INTER_AREA) > 128).astype(np.uint8) * 255
+    # The lower half of each stroke is its unlit bottom bevel, about as bright as
+    # the paper; the letter ends where its cast shadow begins. Fill from the bright
+    # face down (within a downward cone) to the start of that shadow.
+    Lf = cv2.GaussianBlur(luminance(rgb), (0, 0), 0.8)
+    shadow = (((Lf < paper_l - 16) & (dist > 22 * s))).astype(np.uint8) * 255
+
+    def cone(k, down):
+        ker = np.zeros((2 * k + 1, 2 * k + 1), np.uint8)
+        for r in range(k + 1):
+            ker[k - r if down else k + r, k - r // 2:k + r // 2 + 1] = 1
+        return ker
+    kb = int(round(11 * s))
+    bevel = cv2.bitwise_and(cv2.dilate(face, cone(kb, True)), cv2.dilate(shadow, cone(kb, False)))
+    bevel[shadow > 0] = 0
+    fm = np.maximum(face, bevel)
+    fm = cv2.morphologyEx(fm, cv2.MORPH_OPEN, ellipse(3))
+    fm = cv2.morphologyEx(fm, cv2.MORPH_CLOSE, ellipse(int(5 * s) | 1))
+    # smooth edges: supersample, grow ~1px, soft but crisp edge
+    up = 4
+    big = cv2.resize(fm, (W * up, H * up), interpolation=cv2.INTER_LINEAR)
+    big = (big > 128).astype(np.uint8) * 255
+    big = cv2.dilate(big, ellipse(int(2 * up * s) | 1))
+    big = cv2.GaussianBlur(big.astype(np.float32), (0, 0), 0.5 * up)
+    fm = cv2.resize(big, (W, H), interpolation=cv2.INTER_AREA)
     fa = np.clip(fm[my0:my1, mx0:mx1], 0, 255).astype(np.uint8)
     save_webp(np.dstack([np.full_like(fa, 255)] * 3 + [fa]), os.path.join(cdir, 'monogram-fill.webp'), quality=82, alpha_quality=90)
     # SVG outline for the loader (traced from the actual monogram, not retyped)
@@ -624,6 +654,27 @@ def build_audio():
         print('ffmpeg not found: skipping .m4a')
 
 
+# ---------------------------------------------------------------- page joins
+
+def _edge_colours(path):
+    a = np.array(Image.open(path).convert('RGB')).astype(np.float32)
+    n = max(2, int(0.012 * a.shape[0]))
+    return [int(v) for v in a[:n].reshape(-1, 3).mean(0)], [int(v) for v in a[-n:].reshape(-1, 3).mean(0)]
+
+
+def add_edges(manifest):
+    """Average colour of each page's top and bottom edge; the site fades the two
+    edges that meet into their shared midpoint, so pages join without overlapping."""
+    if manifest.get('cover'):
+        t, b = _edge_colours(os.path.join(OUT, 'cover', 'inner-page.webp'))
+        manifest['cover']['edges'] = {'top': t, 'bottom': b}
+    for pid in manifest.get('order', []):
+        path = os.path.join(OUT, pid, 'plate-1080.webp')
+        if os.path.exists(path):
+            t, b = _edge_colours(path)
+            manifest['pages'][pid]['edges'] = {'top': t, 'bottom': b}
+
+
 # ---------------------------------------------------------------- main
 
 def main():
@@ -660,6 +711,10 @@ def main():
         build_audio()
 
     manifest['order'] = [p['id'] for p in cfg['pages']]
+    add_edges(manifest)
+    # cache-busting stamp for every image URL (changes on every asset build)
+    import time
+    manifest['v'] = time.strftime('%Y%m%d%H%M%S')
     with open(mpath, 'w') as f:
         json.dump(manifest, f, indent=1)
     with open(os.path.join(GEN, 'manifest.json'), 'w') as f:

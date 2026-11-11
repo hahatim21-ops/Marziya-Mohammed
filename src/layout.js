@@ -5,7 +5,7 @@
 //    after another in a single continuous scroll, each blending into the previous
 //    one over a soft seam (no pinning, no overlap of content).
 export const PLATE_ASPECT = 1449 / 2576;
-export const SEAM = 0.08; // share of a page height that blends into the previous page
+export const SEAM = 0.05; // share of a page height that fades into the join colour at each edge
 
 export const L = {
   framed: false,
@@ -63,7 +63,7 @@ export function computeLayout() {
     frameH,
     pageH: H,
     plateW: W,
-    plateH: W / PLATE_ASPECT,
+    plateH: Math.round(W / PLATE_ASPECT), // whole pixels: no hairline gaps between pages
     coverW,
     coverH,
     coverX: (W - coverW) / 2,

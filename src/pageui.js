@@ -89,12 +89,13 @@ export function initPageUI({ lenis }) {
     p5.img.setAttribute('aria-hidden', 'true');
     const nikah = p5.lines.filter((l) => l.phase === 'A');
     const recep = p5.lines.filter((l) => l.phase === 'B');
-    const boxOf = (id) => p5.lines.find((l) => l.id === id).box; // [x, y, w, h] in %
-    const nikahBottom = boxOf('e5')[1] + boxOf('e5')[3];
-    const recepTop = boxOf('e6')[1];
-    const recepBottom = boxOf('e9')[1] + boxOf('e9')[3];
-    const b1Y = (nikahBottom + recepTop) / 2;
-    const b2Y = recepBottom + (recepTop - nikahBottom) / 2;
+    // Glow-free bands measured on the design (orig - clean plate, % of page height):
+    // between "AGRIPADA"'s glow (ends 41.5%) and "Reception"'s glow (starts 46.5%),
+    // and below "BAY VIEW ISLAM GYMKHANA" (glow ends 69.5%; floor candles from ~78%).
+    const BAND1 = [41.5, 46.5];
+    const BAND2 = [70.5, 77.0];
+    const b1Y = (BAND1[0] + BAND1[1]) / 2;
+    const b2Y = (BAND2[0] + BAND2[1]) / 2;
 
     const b1 = pill(PIN, S.tapForLocation);
     b1.classList.add('loc-btn');
@@ -108,11 +109,14 @@ export function initPageUI({ lenis }) {
     gsap.set([b1, b2], { xPercent: -50, yPercent: -50, autoAlpha: 0 });
 
     const sizeButtons = () => {
-      const gap = ((recepTop - nikahBottom) / 100) * L.plateH;
-      const h = Math.round(Math.max(30, Math.min(40, gap * 0.62)));
+      // fit the narrow band with a little air above and below
+      const band = ((BAND1[1] - BAND1[0]) / 100) * L.plateH;
+      const h = Math.round(Math.max(26, Math.min(40, band - 6)));
       for (const b of [b1, b2]) {
         b.style.minHeight = h + 'px';
-        b.style.fontSize = (h < 36 ? 11 : 12) + 'px';
+        b.style.height = h + 'px';
+        b.style.fontSize = (h < 32 ? 10.5 : h < 36 ? 11 : 12) + 'px';
+        b.style.padding = `0 ${h < 32 ? 14 : 18}px 0 ${h < 32 ? 12 : 15}px`;
       }
     };
     sizeButtons();
@@ -129,8 +133,10 @@ export function initPageUI({ lenis }) {
     b1.addEventListener('click', () => { b1Opened = true; openLocationSheet('nikah', b1); });
     b2.addEventListener('click', () => openLocationSheet('reception', b2));
 
+    // opacity only: the overlays must stay pixel-aligned with the background, or
+    // their soft glow areas would show as a faint patch while part-way faded
     const fadeIn = (t, targets, at, dur) => {
-      t.fromTo(targets, { autoAlpha: 0, y: 10 }, { autoAlpha: 1, y: 0, duration: dur, ease: 'sine.out' }, at);
+      t.fromTo(targets, { autoAlpha: 0 }, { autoAlpha: 1, duration: dur, ease: 'sine.out' }, at);
     };
     let progress = 0;
     if (!ENV.revealAll) {

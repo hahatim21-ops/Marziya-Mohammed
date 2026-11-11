@@ -54,7 +54,9 @@
         { "id": "e7", "text": "04 DECEMBER 2026", "type": "caps", "phase": "B", "box": [21, 79, 57.6, 60.6] },
         { "id": "e8", "text": "8:30 PM ONWARDS", "type": "caps", "phase": "B", "box": [28, 72, 62.5, 64.8] },
         { "id": "e9", "text": "BAY VIEW ISLAM GYMKHANA", "type": "caps", "phase": "B", "box": [17, 83, 67.3, 69.7] }
-      ]
+      ],
+      "_erase": "removed from this page at the client's request (12 Nov 2026)",
+      "erase": [ { "id": "credit", "type": "caps", "box": [19.5, 48.6, 92.7, 94.6] } ]
     },
     {
       "id": "p06", "src": "06-regards.jpg", "polarity": "light",

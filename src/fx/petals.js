@@ -103,7 +103,15 @@ export function createPetals(canvas) {
     /** n small petals drifting down over `seconds`, spread over the middle of the screen. */
     drizzle(n, seconds) {
       for (let i = 0; i < n; i++) {
-        drizzle.push({ at: clock + (i / n) * seconds + Math.random() * 0.25, x: W * (0.1 + Math.random() * 0.8), y: H * (0.02 + Math.random() * 0.5), size: 6 + Math.random() * 6 });
+        // the first ones appear across the upper screen (so petals are falling past the
+        // monogram straight away), later ones drop in from above the top edge
+        const early = i < n * 0.45;
+        drizzle.push({
+          at: clock + (i / n) * seconds + Math.random() * 0.2,
+          x: W * (0.06 + Math.random() * 0.88),
+          y: early ? H * (Math.random() * 0.42) : -20 - Math.random() * 40,
+          size: 7 + Math.random() * 7,
+        });
       }
     },
     burst(cx, cy, n) {
@@ -132,9 +140,9 @@ export function createPetals(canvas) {
           const p = make(d.y);
           p.x = d.x;
           p.size = d.size;
-          p.vy = 55 + Math.random() * 35;
-          p.sway = 10 + Math.random() * 16;
-          p.fadeIn = 0.6;
+          p.vy = 85 + Math.random() * 55;
+          p.sway = 12 + Math.random() * 18;
+          p.fadeIn = d.y > 0 ? 0.45 : 0;
           petals.push(p);
         }
       }

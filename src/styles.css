@@ -16,7 +16,7 @@
   --frame-h: 100vh;
   --plate-w: 100vw;
   --plate-h: calc(var(--plate-w) * 1.777778);
-  --seam: calc(var(--plate-h) * 0.08);
+  --seam: calc(var(--plate-h) * 0.05);
   --cover-w: max(100vw, 100vh * 0.5625);
   --cover-h: calc(var(--cover-w) * 1.777778);
   --cover-x: calc((100vw - var(--cover-w)) / 2);
@@ -106,20 +106,24 @@ html.is-framed.is-locked #scroller { overflow: hidden; }
 html.is-framed .layer { position: absolute; }
 
 /* ------------------------------------------------------------ pages
-   One continuous scroll. The intro fills the screen; each design page is shown
-   whole at the column width and overlaps the previous page by --seam, its top
-   edge fading in through a gradient mask so one design melts into the next. */
+   One continuous scroll. The intro fills the screen in cream; each design page
+   follows edge to edge at the column width. Nothing overlaps: where two pages
+   meet, both edges fade into the same colour (--join-top / --join-bottom, the
+   midpoint of the two edge colours), so one design flows into the next. */
 .page {
   position: relative;
   width: 100%;
 }
 .page-intro { height: var(--page-h); }
 .page-design { height: var(--plate-h); }
-.page + .page-design {
-  margin-top: calc(var(--seam) * -1);
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 var(--seam));
-          mask-image: linear-gradient(to bottom, transparent 0, #000 var(--seam));
+.page-design .page-inner::before,
+.page-design .page-inner::after {
+  content: ''; position: absolute; left: 0; right: 0; height: var(--seam);
+  z-index: 3; pointer-events: none;
 }
+.page-design .page-inner::before { top: -1px; background: linear-gradient(to bottom, var(--join-top, transparent) 1px, transparent); }
+.page-design .page-inner::after { bottom: -1px; background: linear-gradient(to top, var(--join-bottom, transparent) 1px, transparent); }
+.page-design.is-last .page-inner::after { display: none; }
 .page-inner {
   position: absolute; inset: 0;
   overflow: hidden;
@@ -257,11 +261,11 @@ canvas.fx-canvas { pointer-events: none; mix-blend-mode: screen; z-index: 7; }
   background: linear-gradient(115deg, transparent 38%, rgba(255, 236, 220, .9) 50%, transparent 62%);
   background-size: 260% 100%; background-repeat: no-repeat; background-position: 130% 0;
   mix-blend-mode: soft-light; opacity: .35;
-  -webkit-mask-image: url('/img/cover/cover-front.webp'); mask-image: url('/img/cover/cover-front.webp');
+  -webkit-mask-image: var(--cover-mask); mask-image: var(--cover-mask);
   -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
 }
 .cover-shade { position: absolute; inset: 0; background: #12010a; opacity: 0; pointer-events: none;
-  -webkit-mask-image: url('/img/cover/cover-front.webp'); mask-image: url('/img/cover/cover-front.webp');
+  -webkit-mask-image: var(--cover-mask); mask-image: var(--cover-mask);
   -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
 }
 /* Faces are swapped explicitly at 90° (opening.js): WebKit ignores backface-visibility
@@ -353,7 +357,11 @@ html:not(.is-framed) .ui-hint { position: fixed; }
 }
 @keyframes pill-ring { 0% { transform: scale(1); opacity: .8; } 100% { transform: scale(1.35, 1.6); opacity: 0; } }
 
-.loc-btn { position: absolute; left: 50%; opacity: 0; visibility: hidden; }
+.loc-btn { position: absolute; left: 50%; opacity: 0; visibility: hidden; box-shadow: 0 2px 10px rgba(0, 0, 0, .35); }
+/* a larger invisible hit area (the visible pill is kept small to fit its band) */
+.loc-btn::after { content: ''; position: absolute; inset: -8px -6px; }
+.loc-btn .pill-ring { animation-name: pill-ring-tight; }
+@keyframes pill-ring-tight { 0% { transform: scale(1); opacity: .7; } 100% { transform: scale(1.06, 1.1); opacity: 0; } }
 
 .float-hint {
   position: fixed; z-index: 70; left: 50%; bottom: calc(22px + var(--sab));
@@ -497,7 +505,7 @@ html.is-framed .sheet-backdrop, html.is-framed .sheet { position: absolute; }
 }
 .sheet::before {
   content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: .5;
-  background: url('/img/cover/velvet.webp') center / cover;
+  background: var(--velvet-img) center / cover;
   mix-blend-mode: soft-light;
 }
 .sheet > * { position: relative; }

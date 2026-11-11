@@ -131,7 +131,7 @@ function boot() {
     },
     onFillStart: () => {
       fx.startPetals();
-      fx.drizzle(18, 2.2);
+      fx.drizzle(38, 2.4);
     },
     onOpened: () => {
       showMusicButton();

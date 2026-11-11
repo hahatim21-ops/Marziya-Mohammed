@@ -13,7 +13,13 @@ for pid in man['order']:
     orig = np.array(Image.open(os.path.join(ROOT, 'source', src[pid])).convert('RGB')).astype(np.float32)
     h = min(shot.shape[0], orig.shape[0]); w = min(shot.shape[1], orig.shape[1])
     d = np.abs(shot[:h, :w] - orig[:h, :w])
-    mad = d.mean()
+    # areas erased from the page on purpose are not expected to match the original
+    page = [p for p in cfg['pages'] if p['id'] == pid][0]
+    keep = np.ones(d.shape[:2], bool)
+    for item in page.get('erase', []):
+        x0, x1, y0, y1 = item['box']
+        keep[int(y0 / 100 * h) - 25:int(y1 / 100 * h) + 25, int(x0 / 100 * w) - 25:int(x1 / 100 * w) + 25] = False
+    mad = d[keep].mean()
     # worst local error along overlay edges (visible seams)
     worst = 0.0
     for l in man['pages'][pid]['lines']:

@@ -72,7 +72,8 @@ function loadImg(src) {
 }
 
 export class CurtainRenderer {
-  get background() { return true; }
+  // keeps animating while the page scrolls (GPU work), so chandeliers never freeze
+  get background() { return false; }
 
   constructor() {
     this.canvas = document.createElement('canvas');
@@ -124,7 +125,7 @@ export class CurtainRenderer {
     this.clock = 0;
     gl.uniform1i(gl.getUniformLocation(this.prog, 'uImg'), 0);
     gl.uniform1i(gl.getUniformLocation(this.prog, 'uMask'), 1);
-    this.canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); this.disable('context lost'); });
+    this.canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); if (!this.released) this.disable('context lost'); });
     this.resize();
   }
 
@@ -211,6 +212,19 @@ export class CurtainRenderer {
   }
   pause() { this.active = false; }
   resume() { if (this.entry && this.page) this.active = true; }
+
+  destroy() {
+    this.released = true;
+    this.detach();
+    for (const v of this.cache.values()) this.freeTex(v);
+    this.cache.clear();
+    this.entry = null;
+    try {
+      const ext = this.gl.getExtension('WEBGL_lose_context');
+      if (ext) ext.loseContext();
+    } catch (e) { /* ignore */ }
+    this.ok = false;
+  }
 
   disable(reason) {
     this.disabled = true;

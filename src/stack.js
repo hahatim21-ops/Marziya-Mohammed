@@ -12,7 +12,12 @@ export const pages = []; // ordered: p01 (inner page) .. p06
 export const byId = {};
 
 const BASE = import.meta.env.BASE_URL || '/';
-export const asset = (p) => BASE + p.replace(/^\//, '');
+// images carry the asset-build stamp, so a rebuilt image is never served stale
+const V = manifest.v ? `?v=${manifest.v}` : '';
+export const asset = (p) => BASE + p.replace(/^\//, '') + (/\.(webp|png|jpg|json)$/.test(p) ? V : '');
+// CSS masks/backgrounds that point at images use the same stamp
+document.documentElement.style.setProperty('--cover-mask', `url(${asset('img/cover/cover-front.webp')})`);
+document.documentElement.style.setProperty('--velvet-img', `url(${asset('img/cover/velvet.webp')})`);
 
 function el(tag, cls, attrs) {
   const n = document.createElement(tag);
@@ -105,11 +110,30 @@ export function buildStack(stackEl) {
     }
     stackEl.appendChild(page.sec);
   });
+  setJoins();
   if (ENV.revealAll) {
     enableLoading();
     pages.forEach(loadPage);
   }
   return pages;
+}
+
+// Where two pages meet, both edges fade into the midpoint of their edge colours.
+// The cream intro stays pure cream: page 02 fades in from that cream.
+function setJoins() {
+  const rgb = (c) => `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
+  const mid = (a, b) => a.map((v, i) => Math.round((v + b[i]) / 2));
+  for (let i = 1; i < pages.length; i++) {
+    const prev = pages[i - 1];
+    const page = pages[i];
+    const prevBottom = prev.id === 'p01' ? manifest.cover.edges && manifest.cover.edges.bottom : prev.data && prev.data.edges && prev.data.edges.bottom;
+    const top = page.data && page.data.edges && page.data.edges.top;
+    if (!prevBottom || !top) continue;
+    const c = prev.id === 'p01' ? prevBottom : mid(prevBottom, top);
+    page.sec.style.setProperty('--join-top', rgb(c));
+    if (prev.id !== 'p01') prev.sec.style.setProperty('--join-bottom', rgb(c));
+  }
+  pages[pages.length - 1].sec.classList.add('is-last');
 }
 
 // Nothing but the cover parts and the page-02 plate (preloaded in <head>) loads
