@@ -5,3 +5,6 @@ tools/__pycache__/
 qa-shots/
 .netlify/
 .vercel/
+
+.vercel
+.env*
