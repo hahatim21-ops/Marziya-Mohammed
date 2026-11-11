@@ -53,16 +53,17 @@ measurements and the debug URL parameters.
 
 ## Deploy
 
-`dist/` is a static site. It includes `_headers` (Netlify) and `vercel.json`, so the
-`.ics` files are served as `text/calendar`.
+Live at **https://marziya-mohammed.vercel.app**. The Vercel project
+`marziya-mohammed` is connected to
+[hahatim21-ops/Marziya-Mohammed](https://github.com/hahatim21-ops/Marziya-Mohammed):
+every push to `main` builds and deploys to production automatically. Pushes to other
+branches get preview URLs. Settings are in `vercel.json`; the share-image URLs use the
+production domain (`VERCEL_PROJECT_PRODUCTION_URL`), so a custom domain added in
+Vercel is picked up on the next deploy.
 
-```bash
-npx netlify deploy --prod --dir=dist
-```
+To change content: edit `src/config.js`, commit and push.
 
-Or drag `dist/` onto app.netlify.com/drop, or run `npx vercel --prod`.
-
-After deploying:
-1. Paste the exact Google Maps pins into `mapsUrl` in `src/config.js`, then rebuild and redeploy.
+Still to do:
+1. Paste the exact Google Maps pins into `mapsUrl` in `src/config.js` and push.
 2. Send the link to yourself on WhatsApp to check the preview card.
 3. Test on an iPhone and an Android phone, including inside WhatsApp and Instagram.
