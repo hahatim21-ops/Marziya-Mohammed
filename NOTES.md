@@ -8,7 +8,7 @@ literally would have looked worse. Everything editable lives in `src/config.js`.
 - **End times** (for calendars): Nikah 8:00–10:00 PM, Reception 8:30–11:30 PM IST. Both are guesses.
 - **Map pins:** `mapsUrl` is empty for both events, so "Open in Google Maps" uses a search link built from `mapsQuery`. Paste the exact `maps.app.goo.gl/...` pins into `mapsUrl` before sending. The embedded map always uses the query, because short links can't be embedded.
 - Page 04 has no `@BESPOKEDESIGNS._` credit in the source image, so there is nothing to keep there.
-- **Music** starts 2.11 s into the track (`music.startAt`) and loops back to that point, not to 0.
+- **Music** starts 2.13 s into the track (`music.startAt`) and loops back to that point, not to 0.
 
 ## Asset pipeline (`tools/build_assets.py`)
 - **Inpainting:** LaMa runs at **half resolution**. At full resolution it rebuilt faint ghosts of the erased letters. At 0.5× the fills are clean, and fine grain matched to the surrounding paper is added back. OpenCV Telea/NS were tried and left visible blotches (`--no-lama` still falls back to them).

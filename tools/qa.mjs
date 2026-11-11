@@ -348,7 +348,12 @@ async function music(browser) {
   await page.goto(BASE + '/');
   await waitCover(page);
   await page.mouse.click(vp.width / 2, vp.height / 2);
-  await sleep(500);
+  // the position as soon as playback starts must be the configured start point
+  const startCfg = await page.evaluate(() => window.__music.startAt);
+  await page.waitForFunction(() => { const a = document.getElementById('audio'); return !a.paused && a.currentTime > 0; }, null, { timeout: 8000 });
+  const firstT = await page.evaluate(() => document.getElementById('audio').currentTime);
+  ok(`music (${name}): starts at the configured ${startCfg} s`, Math.abs(firstT - startCfg) < 0.35, `first position=${firstT.toFixed(3)} s`);
+  await sleep(300);
   const g1 = await page.evaluate(() => window.__music.gain);
   await sleep(2400);
   const g2 = await page.evaluate(() => window.__music.gain);
@@ -359,8 +364,7 @@ async function music(browser) {
     return { paused: a.paused, t: a.currentTime, src: a.currentSrc, btn: b.className, pressed: b.getAttribute('aria-pressed') };
   });
   ok(`music (${name}): playing after tap`, !st.paused && st.t > 0.3, JSON.stringify(st));
-  // started at 2.11 s: after ~2.9 s of playback the position is ~5.0 s, not ~2.9 s
-  ok(`music (${name}): starts at 2.11 s into the track`, st.t > 4.3 && st.t < 5.8, `currentTime=${st.t.toFixed(2)}`);
+
   await page.locator('#music').click();
   await sleep(800);
   const muted = await page.evaluate(() => ({ paused: document.getElementById('audio').paused, pressed: document.getElementById('music').getAttribute('aria-pressed') }));

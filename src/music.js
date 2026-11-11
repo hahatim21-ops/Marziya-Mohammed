@@ -28,6 +28,7 @@ export const MUSIC = {
   get playing() { return playing; },
   get muted() { return muted; },
   get gain() { return gain ? gain.gain.value : audio.volume; },
+  get startAt() { return cfg.startAt || 0; },
 };
 window.__music = MUSIC; // QA hook
 
