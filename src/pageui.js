@@ -9,7 +9,6 @@ import { byId, placePct, onVisible, loadPage } from './stack.js';
 import { createScratch } from './scratch.js';
 import { createCountdown } from './countdown.js';
 import { initSheets, openLocationSheet, openDatesSheet, onSheetClose } from './sheet.js';
-import { revealLines } from './reveal.js';
 import { fxApi } from './fx/index.js';
 
 const S = CONFIG.strings;
@@ -23,17 +22,6 @@ function pill(html, label) {
   b.innerHTML = `${html}<span></span><i class="pill-ring" aria-hidden="true"></i>`;
   b.querySelector('span').textContent = label;
   return b;
-}
-
-/** A line's element plus its glow-bloom copy, if it has one. */
-function withBloom(lines) {
-  const out = [];
-  for (const l of lines) {
-    out.push(l.el);
-    const n = l.el.nextElementSibling;
-    if (n && n.classList.contains('ov-bloom')) out.push(n);
-  }
-  return out;
 }
 
 function show(el, d = 0.7, delay = 0) {
@@ -90,104 +78,98 @@ export function initPageUI({ lenis }) {
   }
 
   // ------------------------------------------------------------ page 05
+  // Scroll-driven and reversible. As page 05 rises into view the Nikah lines fade
+  // in one after another, then its location button; scrolling on fades in the
+  // Reception lines, then the second button. Each button sits in the clear gap
+  // under its block and is sized to that gap, so nothing touches any text.
   const p5 = byId.p05;
   {
     const plate = p5.plate;
     plate.removeAttribute('aria-hidden');
     p5.img.setAttribute('aria-hidden', 'true');
+    const nikah = p5.lines.filter((l) => l.phase === 'A');
+    const recep = p5.lines.filter((l) => l.phase === 'B');
+    const boxOf = (id) => p5.lines.find((l) => l.id === id).box; // [x, y, w, h] in %
+    const nikahBottom = boxOf('e5')[1] + boxOf('e5')[3];
+    const recepTop = boxOf('e6')[1];
+    const recepBottom = boxOf('e9')[1] + boxOf('e9')[3];
+    const b1Y = (nikahBottom + recepTop) / 2;
+    const b2Y = recepBottom + (recepTop - nikahBottom) / 2;
+
     const b1 = pill(PIN, S.tapForLocation);
     b1.classList.add('loc-btn');
     b1.setAttribute('aria-label', `${S.tapForLocation}: ${CONFIG.events[0].title}`);
-    placePct(b1, 50, 44.6);
+    placePct(b1, 50, b1Y);
     const b2 = pill(PIN, S.tapForLocation);
     b2.classList.add('loc-btn');
     b2.setAttribute('aria-label', `${S.tapForLocation}: ${CONFIG.events[1].title}`);
-    placePct(b2, 50, 74.5);
-    const scrollFor = document.createElement('div');
-    scrollFor.className = 'scroll-for';
-    scrollFor.innerHTML = '<span></span><span class="arr" aria-hidden="true">↓</span>';
-    scrollFor.firstChild.textContent = S.scrollForReception;
-    placePct(scrollFor, 50, 82);
-    plate.append(b1, b2, scrollFor);
+    placePct(b2, 50, b2Y);
+    plate.append(b1, b2);
+    gsap.set([b1, b2], { xPercent: -50, yPercent: -50, autoAlpha: 0 });
 
-    const nikah = p5.lines.filter((l) => l.phase === 'A');
-    const recep = p5.lines.filter((l) => l.phase === 'B');
-    let phaseB = false;
-    let phaseAReady = false;
-    let hintTimer = 0;
-    let hintShown = false;
-    let b1Opened = false;
-
-    const showHint = () => {
-      if (phaseB || hintShown) return;
-      hintShown = true;
-      show(scrollFor, 0.8);
-    };
-    b1.addEventListener('click', () => {
-      b1Opened = true;
-      clearTimeout(hintTimer);
-      openLocationSheet('nikah', b1);
-    });
-    b2.addEventListener('click', () => openLocationSheet('reception', b2));
-    onSheetClose(() => { if (b1Opened && !phaseB) showHint(); });
-
-    api.p05AReady = () => {
-      if (phaseAReady) return;
-      phaseAReady = true;
-      show(b1, 0.8);
-      hintTimer = setTimeout(() => { if (!b1Opened) showHint(); }, 4000);
-    };
-
-    let recepTl = null;
-    const enterB = () => {
-      if (phaseB) return;
-      phaseB = true;
-      clearTimeout(hintTimer);
-      hide(scrollFor, 0.3);
-      gsap.to(nikah.map((l) => l.el), { opacity: 0.55, duration: 0.8, ease: 'sine.inOut', overwrite: 'auto' });
-      gsap.to(withBloom(nikah).filter((e) => e.classList.contains('ov-bloom')), { opacity: 0.2, duration: 0.8, overwrite: 'auto' });
-      gsap.to(b1, { opacity: 0.6, duration: 0.8 });
-      const fresh = recep.filter((l) => !l.revealed);
-      if (fresh.length) {
-        recepTl = revealLines(recep, plate, false, 0.15);
-        recepTl.add(() => show(b2, 0.8), '+=0.1');
-      } else {
-        gsap.to(recep.map((l) => l.el), { opacity: 1, duration: 0.6, overwrite: 'auto' });
-        gsap.to(withBloom(recep).filter((e) => e.classList.contains('ov-bloom')), { opacity: 0.3, duration: 0.6, overwrite: 'auto' });
-        show(b2, 0.6, 0.3);
+    const sizeButtons = () => {
+      const gap = ((recepTop - nikahBottom) / 100) * L.plateH;
+      const h = Math.round(Math.max(30, Math.min(40, gap * 0.62)));
+      for (const b of [b1, b2]) {
+        b.style.minHeight = h + 'px';
+        b.style.fontSize = (h < 36 ? 11 : 12) + 'px';
       }
     };
-    const leaveB = () => {
-      if (!phaseB) return;
-      phaseB = false;
-      if (recepTl) { recepTl.progress(1); recepTl = null; }
-      gsap.to(withBloom(recep), { opacity: 0, duration: 0.35, overwrite: 'auto' });
-      hide(b2, 0.3);
-      gsap.to(nikah.map((l) => l.el), { opacity: 1, duration: 0.5, overwrite: 'auto' });
-      gsap.to(withBloom(nikah).filter((e) => e.classList.contains('ov-bloom')), { opacity: 0.3, duration: 0.5, overwrite: 'auto' });
-      if (phaseAReady) gsap.to(b1, { opacity: 1, duration: 0.5 });
+    sizeButtons();
+
+    // "Scroll for the Reception": a quiet hint pinned to the bottom of the screen
+    const hint = document.createElement('div');
+    hint.className = 'float-hint';
+    hint.setAttribute('aria-hidden', 'true');
+    hint.innerHTML = '<span></span><span class="arr">↓</span>';
+    hint.firstChild.textContent = S.scrollForReception;
+    document.getElementById('frame').appendChild(hint);
+
+    let b1Opened = false;
+    b1.addEventListener('click', () => { b1Opened = true; openLocationSheet('nikah', b1); });
+    b2.addEventListener('click', () => openLocationSheet('reception', b2));
+
+    const fadeIn = (t, targets, at, dur) => {
+      t.fromTo(targets, { autoAlpha: 0, y: 10 }, { autoAlpha: 1, y: 0, duration: dur, ease: 'sine.out' }, at);
     };
-    // pin page 05 for ~2 viewport heights; phase B in the middle of that run
-    ScrollTrigger.create({
-      trigger: p5.sec,
-      start: 'top top',
-      end: () => '+=' + 2 * L.pageH,
-      onUpdate: (self) => {
-        const p = self.progress;
-        if (p >= 0.45 && !phaseB) {
-          if (!phaseAReady) {
-            // the guest scrolled very fast: settle phase A first
-            nikah.forEach((l) => { l.revealed = true; gsap.set(l.el, { opacity: 1, y: 0, clearProps: 'filter' }); });
-            api.p05AReady();
-          }
-          enterB();
-        } else if (p < 0.3 && phaseB) {
-          leaveB();
-        }
-      },
-      onLeaveBack: () => leaveB(),
-    });
-    parts.p05 = { b1, b2, scrollFor, get phaseB() { return phaseB; } };
+    let progress = 0;
+    if (!ENV.revealAll) {
+      const seq = gsap.timeline({ paused: true, defaults: { ease: 'none' } });
+      nikah.forEach((l, i) => fadeIn(seq, l.el, 0.02 + i * 0.045, 0.1));
+      fadeIn(seq, b1, 0.32, 0.08);
+      recep.forEach((l, i) => fadeIn(seq, l.el, 0.55 + i * 0.05, 0.1));
+      fadeIn(seq, b2, 0.84, 0.08);
+      seq.to({}, { duration: 0.08 }, 0.92);
+      ScrollTrigger.create({
+        trigger: p5.sec,
+        start: 'top 72%',
+        end: 'top 2%',
+        scrub: ENV.reducedMotion ? true : 0.6,
+        animation: seq,
+        onUpdate: (self) => { progress = self.progress; updateHint(); },
+        onToggle: () => updateHint(),
+      });
+      p5.lines.forEach((l) => { l.revealed = true; });
+    } else {
+      gsap.set([b1, b2], { autoAlpha: 1 });
+    }
+
+    // show the hint when the guest pauses (or closes the Nikah sheet) between the two blocks
+    let idleTimer = 0;
+    let hintOn = false;
+    const setHint = (on) => {
+      if (on === hintOn) return;
+      hintOn = on;
+      gsap.to(hint, { opacity: on ? 1 : 0, duration: on ? 0.8 : 0.3, ease: 'sine.out' });
+    };
+    const between = () => progress > 0.4 && progress < 0.5;
+    function updateHint() {
+      clearTimeout(idleTimer);
+      if (!between()) { setHint(false); return; }
+      idleTimer = setTimeout(() => { if (between()) setHint(true); }, b1Opened ? 300 : 2200);
+    }
+    onSheetClose(() => updateHint());
+    parts.p05 = { b1, b2, hint, sizeButtons, get progress() { return progress; } };
   }
 
   // ------------------------------------------------------------ page 06
@@ -217,19 +199,13 @@ export function initPageUI({ lenis }) {
       if (instant) gsap.set(cd, { opacity: 1 });
       else gsap.to(cd, { opacity: 1, duration: 1.0, delay: 0.5, ease: 'sine.out' });
     }
-    if (page.id === 'p05') {
-      if (instant) {
-        api.p05AReady();
-      } else if (tl) {
-        tl.add(() => api.p05AReady(), '+=0.15');
-      }
-    }
     if (page.id === 'p06') {
       gsap.to(parts.p06.again, { opacity: 1, duration: 1, delay: instant ? 0 : 2.2 });
       fxApi.setPetalDensity(1.8);
     }
   };
   api.resize = () => {
+    parts.p05.sizeButtons();
     parts.p04.countdown.resize();
     parts.p04.scratch.resize();
   };

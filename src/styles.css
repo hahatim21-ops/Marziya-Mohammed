@@ -14,10 +14,13 @@
   --page-h: 100vh;
   --frame-w: 100vw;
   --frame-h: 100vh;
-  --plate-w: calc(max(100vw, 100vh * 0.5625) * 1.06);
+  --plate-w: 100vw;
   --plate-h: calc(var(--plate-w) * 1.777778);
-  --plate-x: calc((100vw - var(--plate-w)) / 2);
-  --plate-y: calc((var(--page-h) - var(--plate-h)) / 2);
+  --seam: calc(var(--plate-h) * 0.08);
+  --cover-w: max(100vw, 100vh * 0.5625);
+  --cover-h: calc(var(--cover-w) * 1.777778);
+  --cover-x: calc((100vw - var(--cover-w)) / 2);
+  --cover-y: calc((var(--page-h) - var(--cover-h)) / 2);
   --sat: env(safe-area-inset-top, 0px);
   --sab: env(safe-area-inset-bottom, 0px);
   --sar: env(safe-area-inset-right, 0px);
@@ -102,36 +105,41 @@ html.is-framed #scroller::-webkit-scrollbar { display: none; }
 html.is-framed.is-locked #scroller { overflow: hidden; }
 html.is-framed .layer { position: absolute; }
 
-/* ------------------------------------------------------------ pages */
+/* ------------------------------------------------------------ pages
+   One continuous scroll. The intro fills the screen; each design page is shown
+   whole at the column width and overlaps the previous page by --seam, its top
+   edge fading in through a gradient mask so one design melts into the next. */
 .page {
   position: relative;
   width: 100%;
-  height: var(--page-h);
+}
+.page-intro { height: var(--page-h); }
+.page-design { height: var(--plate-h); }
+.page + .page-design {
+  margin-top: calc(var(--seam) * -1);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 var(--seam));
+          mask-image: linear-gradient(to bottom, transparent 0, #000 var(--seam));
 }
 .page-inner {
   position: absolute; inset: 0;
   overflow: hidden;
   background: var(--deep-wine);
-  transform-origin: 50% 50%;
-  will-change: transform;
 }
-.page:not(:first-child) .page-inner { box-shadow: 0 -16px 40px rgba(20, 2, 6, .55); }
-.page-spacer { height: calc(var(--page-h) * 2); pointer-events: none; }
+.page-intro .page-inner { background: #EFE3D8; }
 .page-dim { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; z-index: 30; }
 
-.plate-fill { position: absolute; inset: -40px; display: none; }
-html.is-narrow .plate-fill { display: block; }
-.plate-fill img { width: 100%; height: 100%; object-fit: cover; filter: blur(24px) brightness(.7); }
-
-.plate-par, .plate-kb { position: absolute; inset: 0; }
-.plate-kb { transform-origin: 50% 50%; }
+.plate-kb { position: absolute; inset: 0; transform-origin: 50% 50%; }
 .plate-kb.kb-on { animation: kenburns 18s ease-in-out infinite alternate; will-change: transform; }
 @keyframes kenburns { from { transform: scale(1); } to { transform: scale(1.035); } }
 .plate {
   position: absolute;
-  left: var(--plate-x); top: var(--plate-y);
+  left: 0; top: 0;
   width: var(--plate-w); height: var(--plate-h);
   contain: layout;
+}
+.page-intro .plate {
+  left: var(--cover-x); top: var(--cover-y);
+  width: var(--cover-w); height: var(--cover-h);
 }
 .plate > .plate-img, .plate > canvas, .plate > .fx-layer {
   position: absolute; inset: 0; width: 100%; height: 100%;
@@ -171,6 +179,24 @@ canvas.fx-canvas { pointer-events: none; mix-blend-mode: screen; z-index: 7; }
   background-size: 300% 100%; background-repeat: no-repeat; background-position: 100% 0;
   -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
   mix-blend-mode: screen;
+}
+
+/* burgundy ink filling the embossed M&U: the outer box is masked to the letters,
+   the inner one rises from the bottom with a soft edge; multiply keeps the embossing */
+.mono-fill {
+  position: absolute; z-index: 5; pointer-events: none;
+  -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  mix-blend-mode: multiply;
+}
+.mono-ink {
+  position: absolute; inset: 0;
+  background: var(--ink, #7A1626);
+  -webkit-mask-image: linear-gradient(to top, #000 0%, #000 44%, transparent 56%, transparent 100%);
+          mask-image: linear-gradient(to top, #000 0%, #000 44%, transparent 56%, transparent 100%);
+  -webkit-mask-size: 100% 250%; mask-size: 100% 250%;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  -webkit-mask-position: 0 var(--level, 0%); mask-position: 0 var(--level, 0%);
 }
 
 /* light sweep across the M&U */
@@ -220,8 +246,8 @@ canvas.fx-canvas { pointer-events: none; mix-blend-mode: screen; z-index: 7; }
   background: linear-gradient(90deg, rgba(20, 0, 4, .5), rgba(20, 0, 4, .12));
 }
 .cover-front .cover-plate {
-  position: absolute; left: var(--plate-x); top: var(--plate-y);
-  width: var(--plate-w); height: var(--plate-h);
+  position: absolute; left: var(--cover-x); top: var(--cover-y);
+  width: var(--cover-w); height: var(--cover-h);
   transform-origin: var(--oval-cx, 50%) var(--oval-cy, 47%);
 }
 .cover-clip { position: absolute; inset: 0; overflow: hidden; }
@@ -327,7 +353,18 @@ html:not(.is-framed) .ui-hint { position: fixed; }
 }
 @keyframes pill-ring { 0% { transform: scale(1); opacity: .8; } 100% { transform: scale(1.35, 1.6); opacity: 0; } }
 
-.loc-btn { position: absolute; left: 50%; transform: translate(-50%, -50%); opacity: 0; visibility: hidden; }
+.loc-btn { position: absolute; left: 50%; opacity: 0; visibility: hidden; }
+
+.float-hint {
+  position: fixed; z-index: 70; left: 50%; bottom: calc(22px + var(--sab));
+  transform: translateX(-50%);
+  font-family: var(--serif); font-weight: 600; font-size: 11px; letter-spacing: .28em; text-transform: uppercase;
+  color: rgba(246, 233, 220, .9); white-space: nowrap; opacity: 0; pointer-events: none;
+  text-shadow: 0 0 10px rgba(0, 0, 0, .7);
+  padding: 8px 14px; border-radius: 999px; background: rgba(43, 5, 9, .35);
+}
+html.is-framed .float-hint { position: absolute; }
+.float-hint .arr { display: inline-block; margin-left: 6px; animation: bob 1.6s ease-in-out infinite; }
 
 .scroll-for {
   position: absolute; left: 50%; transform: translateX(-50%);
@@ -517,7 +554,7 @@ html.is-framed .sheet-backdrop, html.is-framed .sheet { position: absolute; }
 
 /* ------------------------------------------------------------ reduced motion */
 @supports (height: 100svh) {
-  :root { --page-h: 100svh; --frame-h: 100svh; --plate-w: calc(max(100vw, 100svh * 0.5625) * 1.06); }
+  :root { --page-h: 100svh; --frame-h: 100svh; --cover-w: max(100vw, 100svh * 0.5625); }
 }
 
 @media (prefers-reduced-motion: reduce) {

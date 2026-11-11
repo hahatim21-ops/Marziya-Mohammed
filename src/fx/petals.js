@@ -57,6 +57,8 @@ export function createPetals(canvas) {
   let density = 1;
   let ramp = 0;
   let started = false;
+  let drizzle = []; // scheduled small petals: { at, x, size }
+  let clock = 0;
   const phone = Math.min(window.innerWidth, 440) <= 440;
   const base = phone ? 13 : 16;
 
@@ -98,6 +100,12 @@ export function createPetals(canvas) {
     },
     resize,
     setDensity(d) { density = d; },
+    /** n small petals drifting down over `seconds`, spread over the middle of the screen. */
+    drizzle(n, seconds) {
+      for (let i = 0; i < n; i++) {
+        drizzle.push({ at: clock + (i / n) * seconds + Math.random() * 0.25, x: W * (0.1 + Math.random() * 0.8), y: H * (0.02 + Math.random() * 0.5), size: 6 + Math.random() * 6 });
+      }
+    },
     burst(cx, cy, n) {
       const r = canvas.getBoundingClientRect();
       const x0 = cx - r.left;
@@ -115,6 +123,21 @@ export function createPetals(canvas) {
       }
     },
     update(t, dt) {
+      clock += dt;
+      if (drizzle.length) {
+        const due = drizzle.filter((d) => d.at <= clock);
+        drizzle = drizzle.filter((d) => d.at > clock);
+        for (const d of due) {
+          // appear in place (fading in) so they are seen drifting past the monogram
+          const p = make(d.y);
+          p.x = d.x;
+          p.size = d.size;
+          p.vy = 55 + Math.random() * 35;
+          p.sway = 10 + Math.random() * 16;
+          p.fadeIn = 0.6;
+          petals.push(p);
+        }
+      }
       if (started) ramp = Math.min(1, ramp + dt / 9);
       const target = Math.round(base * density * (0.15 + 0.85 * ramp * ramp));
       const ambient = petals.filter((p) => !p.burst).length;
@@ -145,7 +168,7 @@ export function createPetals(canvas) {
         ctx.translate(p.x, p.y);
         ctx.rotate(p.rot);
         ctx.scale(sx < 0 ? Math.min(-0.12, sx) : Math.max(0.12, sx), 1);
-        ctx.globalAlpha = 0.92;
+        ctx.globalAlpha = p.fadeIn ? 0.92 * Math.min(1, p.age / p.fadeIn) : 0.92;
         const s = p.size;
         ctx.drawImage(p.img, -s / 2, -s / 2, s, s);
         ctx.restore();

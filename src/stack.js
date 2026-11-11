@@ -1,12 +1,13 @@
-// Builds the stacked pages from the generated manifest and wires the
-// card-stack scroll (pin + slide over), parallax and the idle Ken Burns.
-import { gsap } from 'gsap';
+// Builds the pages from the generated manifest as one continuous scroll: the
+// intro (inner page) fills the screen, then each design page follows at full
+// width, blending into the previous one over a soft seam (see styles.css).
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import manifest from './generated/manifest.json';
 import { L, imageWidth } from './layout.js';
 import { ENV } from './env.js';
 
 export const MANIFEST = manifest;
+window.__manifest = manifest; // QA hook
 export const pages = []; // ordered: p01 (inner page) .. p06
 export const byId = {};
 
@@ -31,25 +32,22 @@ export function placePct(node, x, y, w, h) {
   if (h != null) node.style.height = h + '%';
 }
 
-function makeSection(id, index, srText) {
-  const sec = el('section', 'page', { id: 'page-' + id, 'data-page': id });
+function makeSection(id, index, kind, srText) {
+  const sec = el('section', `page page-${kind}`, { id: 'page-' + id, 'data-page': id });
   sec.style.zIndex = String(index + 1);
   const inner = el('div', 'page-inner');
-  const fill = el('div', 'plate-fill', { 'aria-hidden': 'true' });
-  const par = el('div', 'plate-par');
   const kb = el('div', 'plate-kb');
   const plate = el('div', 'plate', { 'aria-hidden': 'true' });
   const dim = el('div', 'page-dim');
   kb.appendChild(plate);
-  par.appendChild(kb);
-  inner.append(fill, par, dim);
+  inner.append(kb, dim);
   sec.appendChild(inner);
   if (srText) {
     const sr = el('div', 'sr-only');
     sr.textContent = srText;
     sec.appendChild(sr);
   }
-  const page = { id, index, sec, inner, fill, par, kb, plate, dim, lines: [], ui: {}, loaded: false, fx: null };
+  const page = { id, index, sec, inner, kb, plate, dim, lines: [], ui: {}, loaded: false, fx: null };
   pages.push(page);
   byId[id] = page;
   return page;
@@ -60,27 +58,34 @@ export function buildStack(stackEl) {
   const cover = manifest.cover;
 
   // --- page 01: the inner page seen through the cover window
-  const p1 = makeSection('p01', 0, 'Wedding invitation of Marziya and Mohammed Umar. M&U monogram.');
+  const p1 = makeSection('p01', 0, 'intro', 'Wedding invitation of Marziya and Mohammed Umar. M&U monogram.');
   const img1 = el('img', 'plate-img', { alt: '', decoding: 'async', fetchpriority: 'high' });
   img1.src = asset(cover.inner);
   p1.plate.appendChild(img1);
   p1.img = img1;
   const [mx, my, mw, mh] = cover.monogram;
+  // burgundy "ink" filling the embossed monogram (opening.js animates it)
+  const fill = el('div', 'mono-fill');
+  placePct(fill, mx, my, mw, mh);
+  fill.dataset.mask = asset(cover.monogramFill);
+  const ink = el('div', 'mono-ink');
+  ink.style.setProperty('--ink', cover.burgundy || '#7A1626');
+  fill.appendChild(ink);
+  p1.plate.appendChild(fill);
+  p1.ui.fill = fill;
+  p1.ui.ink = ink;
   const sweep = el('div', 'mono-sweep');
   placePct(sweep, mx, my, mw, mh);
   sweep.dataset.mask = asset(cover.monogramMask);
   p1.plate.appendChild(sweep);
   p1.ui.sweep = sweep;
-  const fill1 = el('img', '', { alt: '' });
-  fill1.dataset.src = asset(cover.inner);
-  p1.fill.appendChild(fill1);
   stackEl.appendChild(p1.sec);
   p1.loaded = true;
 
   // --- pages 02..06
   manifest.order.forEach((id, i) => {
     const m = manifest.pages[id];
-    const page = makeSection(id, i + 1, m.sr);
+    const page = makeSection(id, i + 1, 'design', m.sr);
     page.data = m;
     const img = el('img', 'plate-img', { alt: '', decoding: 'async' });
     img.dataset.srcset = manifest.widths.map((w) => `${srcFor(m.plate, w)} ${w}w`).join(', ');
@@ -98,15 +103,7 @@ export function buildStack(stackEl) {
       page.plate.appendChild(o);
       page.lines.push({ ...line, el: o });
     }
-    const fillImg = el('img', '', { alt: '' });
-    fillImg.dataset.src = srcFor(m.plate, 1080);
-    page.fill.appendChild(fillImg);
     stackEl.appendChild(page.sec);
-    if (id === 'p05') {
-      const spacer = el('div', 'page-spacer', { 'aria-hidden': 'true' });
-      stackEl.appendChild(spacer);
-      page.spacer = spacer;
-    }
   });
   if (ENV.revealAll) {
     enableLoading();
@@ -120,14 +117,10 @@ export function buildStack(stackEl) {
 let loadingEnabled = false;
 export function enableLoading() {
   loadingEnabled = true;
-  const sw = byId.p01 && byId.p01.ui.sweep;
-  if (sw && sw.dataset.mask) sw.style.webkitMaskImage = sw.style.maskImage = `url(${sw.dataset.mask})`;
-  if (L.narrow) loadFills();
-}
-function loadFills() {
-  for (const p of pages) {
-    const f = p.fill.querySelector('img');
-    if (f && f.dataset.src && !f.src && (p.loaded || p.id === 'p01')) f.src = f.dataset.src;
+  const p1 = byId.p01;
+  if (!p1) return;
+  for (const n of [p1.ui.sweep, p1.ui.fill]) {
+    if (n && n.dataset.mask) n.style.webkitMaskImage = n.style.maskImage = `url(${n.dataset.mask})`;
   }
 }
 
@@ -141,12 +134,10 @@ export function loadPage(page) {
   img.src = img.dataset.src;
   page.ready = img.decode ? img.decode().catch(() => {}) : Promise.resolve();
   for (const line of page.lines) line.el.src = line.el.dataset.src;
-  if (L.narrow) loadFills();
   return page.ready;
 }
 
 export function updateSizes() {
-  if (L.narrow && loadingEnabled) loadFills();
   for (const p of pages) if (p.loaded && p.img.srcset) p.img.sizes = Math.round(L.plateW) + 'px';
 }
 
@@ -158,55 +149,12 @@ export const onVisible = (cb) => listeners.visible.push(cb);
 export let activeIndex = 0;
 
 export function createStackTriggers() {
-  const n = pages.length;
-  const rm = ENV.reducedMotion;
   pages.forEach((page, i) => {
-    const next = pages[i + 1];
-    // pin each page while the next one slides over it
-    if (next) {
-      ScrollTrigger.create({
-        trigger: page.sec,
-        start: 'top top',
-        endTrigger: next.sec,
-        end: 'top top',
-        pin: true,
-        pinSpacing: false,
-        anticipatePin: 0,
-      });
-      // the outgoing page recedes
-      const tl = gsap.timeline({
-        scrollTrigger: { trigger: next.sec, start: 'top bottom', end: 'top top', scrub: true },
-      });
-      tl.fromTo(page.inner, { scale: 1, borderRadius: 0 }, { scale: rm ? 1 : 0.92, borderRadius: 18, ease: 'none' }, 0);
-      tl.fromTo(page.dim, { opacity: 0 }, { opacity: 0.5, ease: 'none' }, 0);
-    }
-
-    // gentle parallax tied to scroll (applied to the whole plate so overlays move with it)
-    if (!rm) {
-      const settledAt = i === 0 ? 0.5 : next ? (page.spacer ? 0.25 : 0.5) : 1;
-      gsap.fromTo(page.par, { y: () => -0.03 * L.pageH }, {
-        y: () => (next ? 0.03 : 0) * L.pageH,
-        ease: 'none',
-        immediateRender: false,
-        scrollTrigger: {
-          trigger: page.sec,
-          start: 'top bottom',
-          endTrigger: next ? next.sec : page.sec,
-          end: next ? 'top top' : 'top top',
-          scrub: true,
-          invalidateOnRefresh: true,
-        },
-      });
-      gsap.set(page.par, { y: 0 });
-      page.settledAt = settledAt;
-    }
-
-    // visibility (for effects, Ken Burns, lazy loading)
+    // in or near the viewport: effects, Ken Burns, lazy loading
     ScrollTrigger.create({
       trigger: page.sec,
       start: 'top bottom',
-      endTrigger: next ? next.sec : page.sec,
-      end: next ? 'top top' : 'bottom top',
+      end: 'bottom top',
       onToggle: (self) => {
         page.visible = self.isActive;
         listeners.visible.forEach((cb) => cb(page, self.isActive));
@@ -216,13 +164,11 @@ export function createStackTriggers() {
         }
       },
     });
-
-    // "settled": the page is (almost) fully in view
+    // the page under the middle of the screen
     ScrollTrigger.create({
       trigger: page.sec,
-      start: 'top 45%',
-      endTrigger: next ? next.sec : page.sec,
-      end: next ? 'top 45%' : 'bottom top',
+      start: 'top 50%',
+      end: 'bottom 50%',
       onToggle: (self) => {
         if (self.isActive) {
           activeIndex = i;
@@ -232,7 +178,6 @@ export function createStackTriggers() {
       },
     });
   });
-  void n;
 }
 
 // idle Ken Burns on visible pages only. A CSS animation runs on the compositor,
@@ -269,4 +214,9 @@ export function initBackdrop() {
     else set(srcFor(page.data.plate, 1080));
   });
   return { set: (src) => set(src) };
+}
+
+/** Scroll offset (in the scroller) at which a page's top sits at the top of the screen. */
+export function pageTop(page) {
+  return page.sec.offsetTop;
 }

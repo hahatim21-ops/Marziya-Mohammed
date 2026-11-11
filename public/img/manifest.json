@@ -856,7 +856,57 @@
       0.1553
      ]
     ],
-    "curtain": "img/p02/curtain.webp"
+    "curtain": "img/p02/curtain.webp",
+    "sway": [
+     {
+      "rects": [
+       [
+        0,
+        28,
+        0,
+        16
+       ],
+       [
+        0,
+        24,
+        16,
+        31
+       ]
+      ],
+      "phase": 0.0,
+      "bottom": 31
+     },
+     {
+      "rects": [
+       [
+        72,
+        100,
+        0,
+        16
+       ],
+       [
+        76,
+        100,
+        16,
+        33
+       ]
+      ],
+      "phase": 2.1,
+      "bottom": 33
+     },
+     {
+      "rects": [
+       [
+        38,
+        62,
+        0,
+        13
+       ]
+      ],
+      "phase": 4.0,
+      "bottom": 13
+     }
+    ]
    }
   },
   "p03": {
@@ -1863,7 +1913,45 @@
       0.2329
      ]
     ],
-    "curtain": "img/p03/curtain.webp"
+    "curtain": "img/p03/curtain.webp",
+    "sway": [
+     {
+      "rects": [
+       [
+        0,
+        27,
+        0,
+        19
+       ]
+      ],
+      "phase": 0.0,
+      "bottom": 19
+     },
+     {
+      "rects": [
+       [
+        73,
+        100,
+        0,
+        20
+       ]
+      ],
+      "phase": 2.1,
+      "bottom": 20
+     },
+     {
+      "rects": [
+       [
+        40,
+        60,
+        0,
+        7
+       ]
+      ],
+      "phase": 4.0,
+      "bottom": 7
+     }
+    ]
    }
   },
   "p04": {
@@ -2818,7 +2906,57 @@
       0.2329
      ]
     ],
-    "curtain": "img/p04/curtain.webp"
+    "curtain": "img/p04/curtain.webp",
+    "sway": [
+     {
+      "rects": [
+       [
+        0,
+        30,
+        0,
+        17
+       ],
+       [
+        0,
+        21,
+        17,
+        34
+       ]
+      ],
+      "phase": 0.0,
+      "bottom": 34
+     },
+     {
+      "rects": [
+       [
+        70,
+        100,
+        0,
+        17
+       ],
+       [
+        79,
+        100,
+        17,
+        35
+       ]
+      ],
+      "phase": 2.1,
+      "bottom": 35
+     },
+     {
+      "rects": [
+       [
+        40,
+        60,
+        0,
+        15
+       ]
+      ],
+      "phase": 4.0,
+      "bottom": 15
+     }
+    ]
    }
   },
   "p05": {
@@ -3761,7 +3899,45 @@
      ]
     ],
     "curtain": "img/p05/curtain.webp",
-    "floor": "img/p05/floor.webp"
+    "floor": "img/p05/floor.webp",
+    "sway": [
+     {
+      "rects": [
+       [
+        0,
+        22,
+        0,
+        25
+       ]
+      ],
+      "phase": 0.0,
+      "bottom": 25
+     },
+     {
+      "rects": [
+       [
+        78,
+        100,
+        0,
+        25
+       ]
+      ],
+      "phase": 2.1,
+      "bottom": 25
+     },
+     {
+      "rects": [
+       [
+        42,
+        60,
+        0,
+        10
+       ]
+      ],
+      "phase": 4.0,
+      "bottom": 10
+     }
+    ]
    }
   },
   "p06": {
@@ -4683,7 +4859,57 @@
       0.1553
      ]
     ],
-    "curtain": "img/p06/curtain.webp"
+    "curtain": "img/p06/curtain.webp",
+    "sway": [
+     {
+      "rects": [
+       [
+        0,
+        28,
+        0,
+        14
+       ],
+       [
+        0,
+        21,
+        14,
+        31
+       ]
+      ],
+      "phase": 0.0,
+      "bottom": 31
+     },
+     {
+      "rects": [
+       [
+        72,
+        100,
+        0,
+        14
+       ],
+       [
+        77,
+        100,
+        14,
+        32
+       ]
+      ],
+      "phase": 2.1,
+      "bottom": 32
+     },
+     {
+      "rects": [
+       [
+        40,
+        60,
+        0,
+        13
+       ]
+      ],
+      "phase": 4.0,
+      "bottom": 13
+     }
+    ]
    }
   }
  },
@@ -4715,7 +4941,9 @@
   "inner": "img/cover/inner-page.webp",
   "back": "img/cover/cover-back.webp",
   "velvet": "img/cover/velvet.webp",
-  "monogramMask": "img/cover/monogram-mask.webp"
+  "monogramMask": "img/cover/monogram-mask.webp",
+  "monogramFill": "img/cover/monogram-fill.webp",
+  "burgundy": "#7A1626"
  },
  "order": [
   "p02",

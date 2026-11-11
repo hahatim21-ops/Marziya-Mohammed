@@ -1,21 +1,23 @@
-// The "plate" layout system: every page is a box with the design's aspect ratio
-// (1449:2576), filling its section like object-fit: cover, centred.
+// Layout: two geometries share the 1449:2576 design aspect.
+//  - The intro (cover + inner page) fills the screen like object-fit: cover, so the
+//    cover's die-cut window lines up with the inner page.
+//  - The design pages (02..06) are shown whole at the column's width and flow one
+//    after another in a single continuous scroll, each blending into the previous
+//    one over a soft seam (no pinning, no overlap of content).
 export const PLATE_ASPECT = 1449 / 2576;
-// Extra scale so the ±3% scroll parallax never exposes an edge.
-export const OVERSCAN = 1.06;
-// Text and buttons live between 14% and 86% of the plate width.
-const SAFE = 0.72;
+export const SEAM = 0.08; // share of a page height that blends into the previous page
 
 export const L = {
   framed: false,
   frameW: 0,
   frameH: 0,
-  pageH: 0,
-  plateW: 0,
+  pageH: 0, // viewport (frame) height: the intro section and fixed layers
+  plateW: 0, // design pages: full column width
   plateH: 0,
-  plateX: 0,
-  plateY: 0,
-  narrow: false,
+  coverW: 0, // intro / cover plate (cover-fit)
+  coverH: 0,
+  coverX: 0,
+  coverY: 0,
   radius: 0,
 };
 
@@ -53,43 +55,37 @@ export function computeLayout() {
   }
   const W = frameW;
   const H = frameH;
-  let plateW = Math.max(W, H * PLATE_ASPECT) * OVERSCAN;
-  let narrow = false;
-  if (W / plateW < SAFE) {
-    plateW = W / SAFE;
-    narrow = plateW / PLATE_ASPECT < H * OVERSCAN;
-  }
-  const plateH = plateW / PLATE_ASPECT;
+  const coverW = Math.max(W, H * PLATE_ASPECT);
+  const coverH = coverW / PLATE_ASPECT;
   Object.assign(L, {
     framed,
     frameW,
     frameH,
     pageH: H,
-    plateW,
-    plateH,
-    plateX: (W - plateW) / 2,
-    plateY: (H - plateH) / 2,
-    narrow,
+    plateW: W,
+    plateH: W / PLATE_ASPECT,
+    coverW,
+    coverH,
+    coverX: (W - coverW) / 2,
+    coverY: (H - coverH) / 2,
     radius,
   });
   root.classList.toggle('is-framed', framed);
-  root.classList.toggle('is-narrow', narrow);
   const s = root.style;
+  const px = (v) => v.toFixed(2) + 'px';
   s.setProperty('--vh', vh * 0.01 + 'px');
   s.setProperty('--page-h', H + 'px');
   s.setProperty('--frame-w', frameW + 'px');
   s.setProperty('--frame-h', frameH + 'px');
   s.setProperty('--frame-r', radius + 'px');
-  s.setProperty('--plate-w', plateW.toFixed(2) + 'px');
-  s.setProperty('--plate-h', plateH.toFixed(2) + 'px');
-  s.setProperty('--plate-x', L.plateX.toFixed(2) + 'px');
-  s.setProperty('--plate-y', L.plateY.toFixed(2) + 'px');
+  s.setProperty('--plate-w', px(L.plateW));
+  s.setProperty('--plate-h', px(L.plateH));
+  s.setProperty('--seam', px(L.plateH * SEAM));
+  s.setProperty('--cover-w', px(coverW));
+  s.setProperty('--cover-h', px(coverH));
+  s.setProperty('--cover-x', px(L.coverX));
+  s.setProperty('--cover-y', px(L.coverY));
   return L;
-}
-
-/** Convert a point in plate % to frame (viewport) px for the settled page. */
-export function plateToFrame(xPct, yPct) {
-  return { x: L.plateX + (xPct / 100) * L.plateW, y: L.plateY + (yPct / 100) * L.plateH };
 }
 
 /** Pick the plate image width to request for this screen. */

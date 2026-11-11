@@ -66,6 +66,7 @@ const noop = () => {};
 export const fxApi = {
   burst: noop,
   setPetalDensity: noop,
+  drizzle: noop,
 };
 
 class PageFx {
@@ -111,7 +112,7 @@ class PageFx {
 export function initFx(opts = {}) {
   lenisRef = opts.lenis || null;
   if (ENV.fxOff) {
-    return { setVisible: noop, startPetals: noop, resize: noop };
+    return { setVisible: noop, startPetals: noop, drizzle: noop, resize: noop };
   }
   running = true;
   const pageFx = new Map();
@@ -124,6 +125,7 @@ export function initFx(opts = {}) {
     dust = createDust(document.getElementById('dust'));
     fxApi.burst = (x, y, n) => { petals.burst(x, y, n); addSystem(petals); };
     fxApi.setPetalDensity = (d) => petals.setDensity(d);
+    fxApi.drizzle = (n, sec) => { petals.drizzle(n, sec); addSystem(petals); };
     onActive((page) => {
       petals.setDensity(page.id === 'p06' ? 1.8 : 1);
       if (curtains && !curtainsDisabled && page.data) curtains.attach(page);
@@ -147,6 +149,7 @@ export function initFx(opts = {}) {
       if (curtains && !on && curtains.page === page) curtains.pause();
       if (curtains && on && curtains.page === page) curtains.resume();
     },
+    drizzle(n, sec) { fxApi.drizzle(n, sec); },
     startPetals() {
       if (!petals) return;
       petals.start();

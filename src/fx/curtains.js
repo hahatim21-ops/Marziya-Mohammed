@@ -12,24 +12,52 @@ void main() {
   gl_Position = vec4(a, 0.0, 1.0);
 }`;
 
+const MAX_RECTS = 8;
 const FRAG = `
 precision mediump float;
 uniform sampler2D uImg;
 uniform sampler2D uMask;
 uniform float uT;
 uniform float uAmp;
+uniform float uSway;
+uniform int uN;
+uniform vec4 uRect[${MAX_RECTS}];   // chandelier rectangles (x0, x1, y0, y1) in uv
+uniform vec2 uHang[${MAX_RECTS}];   // (bottom of that chandelier in uv, phase)
 varying vec2 vUv;
+
+float rectW(vec2 p, vec4 r) {
+  float f = 0.018;
+  float wx = smoothstep(r.x - f, r.x + f, p.x) * (1.0 - smoothstep(r.y - f, r.y + f, p.x));
+  float wy = 1.0 - smoothstep(r.w - f * 1.5, r.w + f * 1.5, p.y);
+  return wx * wy * step(r.z - 0.001, p.y);
+}
+
 void main() {
   vec2 uv = vUv;
   float m = texture2D(uMask, uv).r;
-  if (m < 0.004) { gl_FragColor = vec4(0.0); return; }
-  // sways more toward the curtain bottoms, as if they hang from the top
-  uv.x += sin(uv.y * 18.0 + uT * 0.8 + uv.x * 6.0) * uAmp * m * smoothstep(0.0, 1.0, uv.y);
-  vec4 c = texture2D(uImg, uv);
-  // slow light sheen across the folds (±4% inside the mask)
+  // chandeliers: a slow pendulum hanging from the top of the page
+  float cw = 0.0;
+  float dx = 0.0;
+  for (int i = 0; i < ${MAX_RECTS}; i++) {
+    if (i >= uN) break;
+    float w = rectW(uv, uRect[i]);
+    if (w > cw) {
+      cw = w;
+      float hang = clamp(uv.y / max(uHang[i].x, 0.01), 0.0, 1.0);
+      float ph = uHang[i].y;
+      dx = (sin(uT * 0.95 + ph) * 0.8 + sin(uT * 0.41 + ph * 1.7) * 0.2) * uSway * hang;
+    }
+  }
+  if (m < 0.004 && cw < 0.004) { gl_FragColor = vec4(0.0); return; }
+  vec2 suv = uv;
+  suv.x -= dx * cw;
+  // curtains sway more toward their bottoms, as if they hang from the top
+  suv.x += sin(uv.y * 18.0 + uT * 0.8 + uv.x * 6.0) * uAmp * m * smoothstep(0.0, 1.0, uv.y) * (1.0 - cw);
+  vec4 c = texture2D(uImg, suv);
+  // slow light sheen across the folds (±4% inside the curtain mask)
   float sheen = sin(uv.x * 26.0 - uT * 0.45 + sin(uv.y * 3.0 + uT * 0.21) * 1.7);
-  c.rgb *= 1.0 + 0.04 * sheen * m;
-  float a = clamp(m * 1.6, 0.0, 1.0);
+  c.rgb *= 1.0 + 0.04 * sheen * m * (1.0 - cw);
+  float a = clamp(max(m, cw) * 1.6, 0.0, 1.0);
   gl_FragColor = vec4(c.rgb * a, a);
 }`;
 
@@ -89,6 +117,11 @@ export class CurtainRenderer {
     gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
     this.uT = gl.getUniformLocation(this.prog, 'uT');
     this.uAmp = gl.getUniformLocation(this.prog, 'uAmp');
+    this.uSway = gl.getUniformLocation(this.prog, 'uSway');
+    this.uN = gl.getUniformLocation(this.prog, 'uN');
+    this.uRect = gl.getUniformLocation(this.prog, 'uRect');
+    this.uHang = gl.getUniformLocation(this.prog, 'uHang');
+    this.clock = 0;
     gl.uniform1i(gl.getUniformLocation(this.prog, 'uImg'), 0);
     gl.uniform1i(gl.getUniformLocation(this.prog, 'uMask'), 1);
     this.canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); this.disable('context lost'); });
@@ -97,7 +130,8 @@ export class CurtainRenderer {
 
   resize() {
     if (!this.ok) return;
-    const k = Math.min(window.devicePixelRatio || 1, 1.5);
+    // up to 2x so the crystals stay crisp where the canvas covers the image
+    const k = Math.min(window.devicePixelRatio || 1, 2);
     this.w = Math.round(L.plateW * k);
     this.h = Math.round(L.plateH * k);
     this.canvas.width = this.w;
@@ -162,9 +196,10 @@ export class CurtainRenderer {
     }
     if (this.page !== page) return;
     this.entry = entry;
+    this.setSway(page.data.fxData.sway || []);
     page.plate.insertBefore(this.canvas, page.img.nextSibling);
     this.active = true;
-    this.render(0);
+    this.render(this.clock);
     requestAnimationFrame(() => { this.canvas.style.opacity = '1'; });
   }
 
@@ -184,8 +219,31 @@ export class CurtainRenderer {
     document.documentElement.dataset.curtains = 'off:' + reason;
   }
 
+  setSway(chandeliers) {
+    const rects = new Float32Array(MAX_RECTS * 4);
+    const hang = new Float32Array(MAX_RECTS * 2);
+    let n = 0;
+    for (const c of chandeliers) {
+      for (const r of c.rects) {
+        if (n >= MAX_RECTS) break;
+        rects.set([r[0] / 100, r[1] / 100, r[2] / 100, r[3] / 100], n * 4);
+        hang.set([c.bottom / 100, c.phase], n * 2);
+        n++;
+      }
+    }
+    this.swayN = n;
+    this.swayRects = rects;
+    this.swayHang = hang;
+  }
+
   render(t) {
     const gl = this.gl;
+    gl.uniform1i(this.uN, this.swayN || 0);
+    if (this.swayN) {
+      gl.uniform4fv(this.uRect, this.swayRects);
+      gl.uniform2fv(this.uHang, this.swayHang);
+    }
+    gl.uniform1f(this.uSway, 0.0065);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this.entry.img);
     gl.activeTexture(gl.TEXTURE1);
@@ -197,9 +255,12 @@ export class CurtainRenderer {
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }
 
-  update(t) {
+  update(t, dt) {
     if (!this.active || !this.entry || this.disabled) return;
-    this.render((performance.now() - this.t0) / 1000);
+    // own clock: it only advances while animating, so pausing during a scroll
+    // never makes the chandeliers or curtains jump
+    this.clock += Math.min(dt || 0.016, 0.05);
+    this.render(this.clock);
     void t;
   }
 }

@@ -8,6 +8,7 @@ literally would have looked worse. Everything editable lives in `src/config.js`.
 - **End times** (for calendars): Nikah 8:00–10:00 PM, Reception 8:30–11:30 PM IST. Both are guesses.
 - **Map pins:** `mapsUrl` is empty for both events, so "Open in Google Maps" uses a search link built from `mapsQuery`. Paste the exact `maps.app.goo.gl/...` pins into `mapsUrl` before sending. The embedded map always uses the query, because short links can't be embedded.
 - Page 04 has no `@BESPOKEDESIGNS._` credit in the source image, so there is nothing to keep there.
+- **Music** starts 2.11 s into the track (`music.startAt`) and loops back to that point, not to 0.
 
 ## Asset pipeline (`tools/build_assets.py`)
 - **Inpainting:** LaMa runs at **half resolution**. At full resolution it rebuilt faint ghosts of the erased letters. At 0.5× the fills are clean, and fine grain matched to the surrounding paper is added back. OpenCV Telea/NS were tried and left visible blotches (`--no-lama` still falls back to them).
@@ -22,26 +23,30 @@ literally would have looked worse. Everything editable lives in `src/config.js`.
 - Re-run everything with `npm run assets` (about 3–4 minutes on CPU). Use `--only p05` for one page, or `--fx-only` to regenerate just the effect maps.
 
 ## Opening
+- **Burgundy monogram fill:** as the cover swings clear (1.5 s), burgundy ink (`#7A1626`) rises through the embossed M&U from the bottom up over 2.2 s, multiplied over the embossing so the relief still shows, while small petals drift down across it. The letter mask (`monogram-fill.webp`) comes from the letter faces, which are brighter than the textured paper, worked at 3× for smooth edges. Scrolling unlocks when the fill completes (3.55 s).
 - **Swing curve:** the brief says `power2.inOut` to 180°, but that passes 90° (the cover disappears) after only about 1 s. The storyboard shows ≈60° at +0.8 s, ≈75° at +1.2 s and a thin sliver at +1.6 s. The visible half (0→90°) therefore uses `power2.out` over 0.15–1.9 s (≈55°/74°/87° at those checkpoints); the edge-on remainder to 180° is instant and invisible.
 - The hinge is the visible left edge of the screen, not the off-screen edge of the over-scanned plate.
 - With the cover closed, the inner page waits at scale 1.025 and brightness 0.92, then settles while the cover swings, as specified.
 - Content under the closed cover is `inert`, so the first Tab lands on the cover.
 - **Die-cut shadow:** the brief puts `filter: drop-shadow(...)` on the cover front. In WebKit (Safari, and every iOS in-app browser) a filter on a face inside a 3D-rotating parent renders as a flat colour, and `backface-visibility` stops working. The shadow is instead an inset shadow on an ellipse exactly at the window, plus a soft strip on the 6px right-edge peek. Both sit under the cover, deepen during the lift and fade as the cover swings. The front and back faces are swapped explicitly at 90°. Both Chromium and WebKit now match the storyboard frames.
 
-## Layout
-- Plates are over-scanned by 6% so the ±3% scroll parallax never exposes an edge. At 390×844 the visible range is about 11–89% of the plate width, inside the 14–86% safe area.
+## Layout: one continuous scroll (changed on request, 12 Nov 2026)
+- The original brief's card stack (each page pinned while the next slides over it) was replaced, at the client's request, with **one continuous, seamless scroll** like zainab-mohammed.vercel.app: no pinning and no pages sliding over each other.
+- The intro (inner page with the M&U) fills the screen like `object-fit: cover`, so the cover's die-cut window still lines up. Each design page is then shown **whole, at the column's width** (9:16 at 1449×2576), one after another.
+- **Seams:** each design page overlaps the previous one by 8% of its height, and its top edge fades in through a gradient mask, so one design melts into the next. The overlap only touches the very top and bottom of the designs (chandeliers, steps), never text.
+- The 14–86% safe area is automatic now, since the full plate width is always visible.
 - On desktop the column is its own scroll container (Lenis wrapper and ScrollTrigger scroller). Resizing a window across 600 px reloads the page, so the two scroll modes never mix.
-- Page 05 is followed by a 200 vh spacer, so it stays pinned for two viewport heights of phases before page 06 slides over it.
 
 ## Reveals
-- Reading order is kept, but a script line occupies about 1 s before the next line starts (other lines still stagger 0.18 s). Otherwise "Mohammed Umar" would start writing while "Marziya" was half drawn.
+- With continuous scroll, **each line reveals once as it comes up into view** (its top passes 86% of the screen height). Lines that arrive together are queued in reading order: a script line occupies about 1 s before the next line starts, other lines stagger 0.18 s.
 - **Glow bloom:** on the dark, glowing pages the overlay carries the design's own halo, so a `drop-shadow` outlined the whole halo as a cloud. The bloom there is a blurred copy, run through `contrast()` (which keeps only the bright letters) and screen-blended. The cream pages use the soft cream `drop-shadow` as written, because their overlays hug the letters.
-- **Page 05** is strict about "never both locations together". Scrolling back up into phase A hides the Reception lines and second button again (they fade back in on the way down).
+- **Page 05** is driven by scroll position and fully reversible: as the page rises from 72% to 2% of the screen height, the Nikah lines fade in one by one, then its "Tap for location" button, then (scrolling on) the Reception lines, then the second button. Scrolling back up fades them out in reverse, so the two locations never appear together until the guest scrolls for the second. Each button sits in the measured empty gap below its block (between "AGRIPADA" and "Reception", and below "BAY VIEW ISLAM GYMKHANA") and is sized to that gap, so it never touches text (checked in QA). A small "Scroll for the Reception" hint appears at the bottom of the screen if the guest pauses between the two blocks.
 
 ## Effects and performance
 - Background effects (curtain sway, twinkles, crystal sweep, glows, candles, floor shimmer) **hold their last frame while the page is actively scrolling** and resume once it stops. Petals and dust keep moving. The scroll gets the whole frame budget, and the effects are too subtle for the pause to show.
 - Ken Burns is a CSS animation, so it runs on the compositor with no JavaScript per frame. It runs only on visible pages.
-- One WebGL context is shared and attached to the settled page. It is transparent outside the curtain mask, so the crisp `<img>` shows everywhere else. It falls back to the static image if WebGL is missing, under reduced motion, or if the frame rate stays below 45 fps for 2 s while it is animating.
+- **Chandeliers sway** like slow pendulums hanging from the top of the page: hand-placed rectangles per page (`SWAY` in `build_assets.py`) that stop above the urns and flowers, each with its own phase, about 2–3 px at phone size. It runs in the same WebGL pass as the curtains, at up to 2× resolution so the crystals stay crisp, and on its own clock, so it never jumps when it pauses during a scroll.
+- One WebGL context is shared and attached to the page in the middle of the screen. It is transparent outside the curtain mask, so the crisp `<img>` shows everywhere else. It falls back to the static image if WebGL is missing, under reduced motion, or if the frame rate stays below 45 fps for 2 s while it is animating.
 - **Loading:** before the tap only the cover parts, the page-02 plate (preloaded in `<head>`) and the label font load (**565 KB**). Everything else loads about one page ahead after the tap. The 2.2 MB music track starts buffering only once the cover is on screen, rather than at first paint, so it never competes with the cover on a slow connection.
 - **Lighthouse (mobile, production build):** Performance 97–98, Accessibility 100, Best Practices 100, LCP 0.8 s, CLS ≤ 0.007. SEO is low on purpose (`noindex` and a `robots.txt` that disallows everything).
 - **Frame rate:** 57–60 fps while scrolling at DPR 3 with the GPU. With 4× CPU throttling, headless Chromium measured 20–35 fps, and these runs are noisy: native touch scrolling stays on the compositor thread, but the scroll-linked tweens (page recede, parallax) update at that rate. In default headless mode Chromium renders with SwiftShader (CPU) and reports much lower numbers, which say nothing about phone GPUs. **Check on a real mid-range Android.**

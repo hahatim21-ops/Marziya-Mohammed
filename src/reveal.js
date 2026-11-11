@@ -43,6 +43,9 @@ function shimmer(line, plate) {
 }
 
 /** Duration a line "occupies" before the next one should start. */
+export function lineOccupancy(type) {
+  return occupancy(type);
+}
 function occupancy(type) {
   if (ENV.reducedMotion) return STAGGER;
   if (type === 'script') return 1.0;

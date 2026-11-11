@@ -50,11 +50,19 @@ export function initMusic() {
   btn.addEventListener('click', toggle);
   document.addEventListener('visibilitychange', onVisibility);
   window.addEventListener('pagehide', () => { if (playing) fadeTo(0, 0.2, () => audio.pause()); });
+  // start (and loop back) at cfg.startAt instead of the very beginning of the file
   audio.addEventListener('loadedmetadata', () => {
-    if (cfg.startAt && audio.currentTime < cfg.startAt) {
-      try { audio.currentTime = cfg.startAt; } catch (e) { /* ignore */ }
-    }
+    if (cfg.startAt && audio.currentTime < cfg.startAt) seekToStart();
   }, { once: true });
+  // Safari ignores a seek made before playback can start, so check again once it
+  // actually plays (the fade-in gain is still near zero, so the jump is inaudible)
+  audio.addEventListener('playing', () => {
+    if (cfg.startAt && audio.currentTime < cfg.startAt - 0.25) seekToStart();
+  });
+  audio.addEventListener('ended', () => {
+    seekToStart();
+    if (playing && !muted && !document.hidden) audio.play().catch(() => {});
+  });
 }
 
 let preloaded = false;
@@ -66,6 +74,10 @@ export function preloadMusic() {
   const go = () => { if (!started) { audio.preload = 'auto'; try { audio.load(); } catch (e) { /* ignore */ } } };
   if ('requestIdleCallback' in window) requestIdleCallback(go, { timeout: 2500 });
   else setTimeout(go, 1200);
+}
+
+function seekToStart() {
+  try { audio.currentTime = cfg.startAt || 0; } catch (e) { /* not seekable yet */ }
 }
 
 function ensureGraph() {
@@ -117,6 +129,7 @@ function play(fadeSeconds) {
   ensureGraph();
   if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
   if (!gain) audio.volume = 0;
+  if (cfg.startAt && audio.readyState >= 1 && audio.currentTime < cfg.startAt) seekToStart();
   let p;
   try {
     p = audio.play();

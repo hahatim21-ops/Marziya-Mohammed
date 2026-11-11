@@ -14,7 +14,7 @@ import {
 } from './stack.js';
 import { initOpening } from './opening.js';
 import { initMusic, showMusicButton, preloadMusic } from './music.js';
-import { revealLines, showLinesNow } from './reveal.js';
+import { revealLine, lineOccupancy, showLinesNow } from './reveal.js';
 import { initPageUI } from './pageui.js';
 import { initFx } from './fx/index.js';
 
@@ -76,25 +76,45 @@ function boot() {
       if (on) startKenBurns(page); else pauseKenBurns(page);
       fx.setVisible(page, on);
     });
-    onActive((page) => revealPage(page));
     if (ENV.revealAll) {
       pages.forEach((p) => { if (p.lines.length) { showLinesNow(p.lines); revealed.add(p.id); ui.onPageReveal(p, null, true); } });
+    } else {
+      createLineTriggers();
     }
     if (ENV.debug === '1') import('./debug.js').then((m) => m.overlayDebug(pages));
     ScrollTrigger.refresh();
   };
 
-  // line reveals once each page has settled
-  const revealPage = (page) => {
-    if (page.id === 'p01' || revealed.has(page.id)) return;
-    revealed.add(page.id);
-    loadPage(page);
-    const lines = page.id === 'p05' ? page.lines.filter((l) => l.phase === 'A') : page.lines;
-    waitImages(lines.map((l) => l.el), 2500).then(() => {
+  // Continuous scroll: each line reveals once as it comes up into view. Lines that
+  // arrive together are queued in reading order (scripts take ~1s before the next).
+  const createLineTriggers = () => {
+    for (const page of pages) {
+      if (!page.data || page.id === 'p05') continue; // page 05 is scroll-driven (pageui.js)
       const dark = page.data.polarity === 'dark';
-      const tl = revealLines(lines, page.plate, dark, 0.1);
-      ui.onPageReveal(page, tl);
-    });
+      page.revealAt = 0;
+      for (const line of page.lines) {
+        ScrollTrigger.create({
+          trigger: line.el,
+          start: 'top 86%',
+          once: true,
+          onEnter: () => {
+            loadPage(page);
+            waitImages([line.el], 2500).then(() => {
+              const nowS = performance.now() / 1000;
+              const at = Math.max(nowS, page.revealAt);
+              page.revealAt = at + lineOccupancy(line.type);
+              gsap.delayedCall(at - nowS, () => {
+                revealLine(line, page.plate, dark);
+                if (!revealed.has(page.id)) {
+                  revealed.add(page.id);
+                  ui.onPageReveal(page, null);
+                }
+              });
+            });
+          },
+        });
+      }
+    }
   };
   const opening = initOpening({
     lenis,
@@ -109,8 +129,11 @@ function boot() {
       loadPage(pages[1]);
       loadPage(pages[2]);
     },
-    onOpened: () => {
+    onFillStart: () => {
       fx.startPetals();
+      fx.drizzle(18, 2.2);
+    },
+    onOpened: () => {
       showMusicButton();
     },
     onUnlock: () => {

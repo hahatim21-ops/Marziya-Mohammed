@@ -60,13 +60,23 @@ async function pageH(page) {
   return page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--page-h')));
 }
 
-async function gotoSettled(page, k, wait = 2500) {
-  const H = await pageH(page);
-  await scrollToY(page, Math.max(0, (k - 0.5) * H));
+// Scroll offset that centres a page in the viewport (or, for page 05, reaches a given
+// progress of its scroll-driven sequence: start 'top 72%', end 'top 2%').
+async function yFor(page, id, p05progress) {
+  return page.evaluate(({ id, pr }) => {
+    const sec = document.getElementById('page-' + id);
+    const vh = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--page-h'));
+    if (pr != null) return Math.max(0, sec.offsetTop - (0.72 - 0.70 * pr) * vh);
+    return Math.max(0, sec.offsetTop - (vh - sec.offsetHeight) / 2);
+  }, { id, pr: p05progress == null ? null : p05progress });
+}
+async function gotoPage(page, id, wait = 2500, p05progress) {
+  const y = await yFor(page, id, p05progress);
+  await scrollToY(page, Math.max(0, y - 300));
   await sleep(250);
-  await scrollToY(page, k * H);
+  await scrollToY(page, y);
   await sleep(wait);
-  return H;
+  return y;
 }
 
 // ---------------------------------------------------------------- scenarios
@@ -113,14 +123,14 @@ async function opening(browser, tag = '') {
     await page.mouse.click(vp.width / 2, vp.height * 0.5);
     await page.waitForFunction(() => !!window.__openTl);
     await page.evaluate(() => { window.__openTl.pause(); });
-    for (const t of [0.3, 0.8, 1.2, 1.6, 2.2]) {
+    for (const t of [0.3, 0.8, 1.2, 1.6, 2.2, 3.0, 3.8]) {
       // seek with events on, so onUpdate (the swing) and the 2.0s callback run
       await page.evaluate((tt) => { window.__openTl.seek(tt, false); }, t);
       await sleep(60);
       await page.screenshot({ path: join(OUT, `open-${vp.name}-${t.toFixed(1)}s${tag}.png`) });
     }
     await page.evaluate(() => { window.__openTl.play(); });
-    await sleep(900);
+    await sleep(1600);
     const unlocked = await page.evaluate(() => !document.documentElement.classList.contains('is-locked'));
     ok(`${vp.name}: unlocked after opening`, unlocked);
     await page.screenshot({ path: join(OUT, `open-${vp.name}-done${tag}.png`) });
@@ -134,18 +144,16 @@ async function pages(browser, tag = '') {
     await page.goto(BASE + '/?open=1');
     await waitCover(page);
     await sleep(800);
-    const H = await pageH(page);
-    // settled positions: inner 0, p02 H, p03 2H, p04 3H, p05 4H (phase A), p05 ~5.6H (phase B), p06 7H
-    const stops = [['p01', 0], ['p02', 1], ['p03', 2], ['p04', 3], ['p05a', 4], ['p05b', 5.6], ['p06', 7]];
-    for (const [name, k] of stops) {
-      await scrollToY(page, Math.max(0, (k - 0.5) * H));
-      await sleep(250);
-      await scrollToY(page, k * H);
-      await sleep(name === 'p05b' ? 4200 : 3600);
+    await page.screenshot({ path: join(OUT, `page-${vp.name}-p01${tag}.png`) });
+    const stops = [['p02', 'p02'], ['p03', 'p03'], ['p04', 'p04'], ['p05a', 'p05', 0.45], ['p05b', 'p05', 1], ['p06', 'p06']];
+    for (const [name, id, pr] of stops) {
+      await gotoPage(page, id, 3600, pr);
       await page.screenshot({ path: join(OUT, `page-${vp.name}-${name}${tag}.png`) });
     }
-    await scrollToY(page, 1.5 * H);
-    await sleep(500);
+    // the seam between two designs
+    const yb = await page.evaluate(() => document.getElementById('page-p03').offsetTop - innerHeight * 0.45);
+    await scrollToY(page, yb);
+    await sleep(800);
     await page.screenshot({ path: join(OUT, `page-${vp.name}-transition${tag}.png`) });
     const hscroll = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
     ok(`${vp.name}: no horizontal scroll`, !hscroll);
@@ -159,7 +167,7 @@ async function scratch(browser) {
   await page.goto(BASE + '/?open=1');
   await waitCover(page);
   await sleep(600);
-  await gotoSettled(page, 3, 2500);
+  await gotoPage(page, 'p04', 2500);
   const box = await page.locator('.scratch canvas').first().boundingBox();
   const y0 = await page.evaluate(() => window.__lenis.scroll);
   await page.screenshot({ path: join(OUT, 'scratch-before.png') });
@@ -195,7 +203,7 @@ async function dates(browser) {
   const { ctx, page } = await newPage(browser, vp);
   await page.goto(BASE + '/?open=1');
   await waitCover(page);
-  await gotoSettled(page, 3, 2500);
+  await gotoPage(page, 'p04', 2500);
   // keyboard path: the visually hidden "Reveal the date" button
   await page.locator('.scratch-reveal-btn').focus();
   await page.keyboard.press('Enter');
@@ -232,10 +240,10 @@ async function events(browser) {
   await page.goto(BASE + '/?open=1');
   await waitCover(page);
   await sleep(600);
-  const H = await gotoSettled(page, 4, 4500);
+  await gotoPage(page, 'p05', 2500, 0.45);
   const vis = async () => page.evaluate(() => {
     const ops = (ids) => ids.map((id) => +getComputedStyle(document.querySelector(`[data-line="${id}"]`)).opacity);
-    const btns = Array.from(document.querySelectorAll('.loc-btn')).map((b) => +getComputedStyle(b).opacity);
+    const btns = Array.from(document.querySelectorAll('.loc-btn')).map((b) => +(+getComputedStyle(b).opacity).toFixed(2));
     return { a: ops(['e1', 'e2', 'e3', 'e4', 'e5']), b: ops(['e6', 'e7', 'e8', 'e9']), btns };
   });
   const A = await vis();
@@ -250,12 +258,30 @@ async function events(browser) {
   ok('events: Open in Google Maps link', openHref.startsWith('https://www.google.com/maps/search/?api=1&query=Akash'), openHref);
   await page.keyboard.press('Escape');
   await sleep(800);
-  const hint = await page.evaluate(() => +getComputedStyle(document.querySelector('.scroll-for')).opacity);
+  await sleep(600);
+  const hint = await page.evaluate(() => +getComputedStyle(document.querySelector('.float-hint')).opacity);
   ok('events: hint after closing sheet', hint > 0.5);
-  await scrollToY(page, 5.6 * H);
-  await sleep(4500);
+  await gotoPage(page, 'p05', 2500, 1);
   const B = await vis();
-  ok('events: phase B shows Reception + second button', B.b.every((o) => o > 0.9) && B.btns[1] > 0.9, JSON.stringify(B));
+  ok('events: further scroll shows Reception + second button', B.a.every((o) => o > 0.9) && B.b.every((o) => o > 0.9) && B.btns[1] > 0.9, JSON.stringify(B));
+  // no button overlaps any text line
+  const overlaps = await page.evaluate(() => {
+    const out = [];
+    const lines = Array.from(document.querySelectorAll('#page-p05 .ov'));
+    for (const b of document.querySelectorAll('.loc-btn')) {
+      const r = b.getBoundingClientRect();
+      for (const l of lines) {
+        const id = l.dataset.line;
+        const box = window.__manifest.pages.p05.lines.find((x) => x.id === id).box;
+        const plate = l.parentElement.getBoundingClientRect();
+        const t = plate.top + box[1] / 100 * plate.height;
+        const bt = t + box[3] / 100 * plate.height;
+        if (r.bottom > t && r.top < bt) out.push(id);
+      }
+    }
+    return out;
+  });
+  ok('events: buttons do not overlap any text', overlaps.length === 0, overlaps.join(','));
   await page.screenshot({ path: join(OUT, 'events-phaseB.png') });
   await page.locator('.loc-btn').nth(1).click({ force: true });
   await sleep(1200);
@@ -266,10 +292,9 @@ async function events(browser) {
   ok('events: Reception Google Calendar dates', gcal.includes('20261204T150000Z%2F20261204T180000Z'));
   await page.locator('.sheet-close').click();
   await sleep(700);
-  await scrollToY(page, 4 * H);
-  await sleep(1200);
+  await gotoPage(page, 'p05', 2500, 0.45);
   const A2 = await vis();
-  ok('events: back in phase A hides Reception', A2.b.every((o) => o < 0.05) && A2.btns[1] < 0.05, JSON.stringify(A2));
+  ok('events: scrolling back up hides Reception again', A2.b.every((o) => o < 0.05) && A2.btns[1] < 0.05, JSON.stringify(A2));
   await ctx.close();
 }
 
@@ -284,7 +309,7 @@ async function countdown(browser) {
     const { ctx, page } = await newPage(browser, vp);
     await page.goto(`${BASE}/?open=1&now=${now}`);
     await waitCover(page);
-    await gotoSettled(page, 3, 3000);
+    await gotoPage(page, 'p04', 3000);
     const txt = await page.evaluate(() => {
       const c = document.querySelector('.countdown');
       const m = c.querySelector('.cd-message');
@@ -334,6 +359,8 @@ async function music(browser) {
     return { paused: a.paused, t: a.currentTime, src: a.currentSrc, btn: b.className, pressed: b.getAttribute('aria-pressed') };
   });
   ok(`music (${name}): playing after tap`, !st.paused && st.t > 0.3, JSON.stringify(st));
+  // started at 2.11 s: after ~2.9 s of playback the position is ~5.0 s, not ~2.9 s
+  ok(`music (${name}): starts at 2.11 s into the track`, st.t > 4.3 && st.t < 5.8, `currentTime=${st.t.toFixed(2)}`);
   await page.locator('#music').click();
   await sleep(800);
   const muted = await page.evaluate(() => ({ paused: document.getElementById('audio').paused, pressed: document.getElementById('music').getAttribute('aria-pressed') }));
@@ -365,7 +392,7 @@ async function a11y(browser) {
     await page.keyboard.press('Tab');
     const f = await page.evaluate(() => document.activeElement.id);
     await page.keyboard.press('Enter');
-    await sleep(3000);
+    await sleep(4200); // swing + burgundy fill, unlock at 3.55 s
     const open = await page.evaluate(() => !document.getElementById('cover') && !document.documentElement.classList.contains('is-locked'));
     ok('a11y: cover opens with the keyboard', f === 'cover' && open, `focused=${f}`);
     await ctx.close();
@@ -382,11 +409,11 @@ async function a11y(browser) {
       rm: document.documentElement.classList.contains('reduced-motion'),
     }));
     ok('a11y: reduced motion cross-fades the cover', st.gone && st.unlocked && st.rm, JSON.stringify(st));
-    await gotoSettled(page, 2, 2600);
+    await gotoPage(page, 'p03', 2600);
     const lines = await page.$$eval('#page-p03 .ov', (els) => els.map((e) => +getComputedStyle(e).opacity));
     ok('a11y: reduced motion still reveals lines', lines.every((o) => o > 0.95), lines.join(','));
     await page.screenshot({ path: join(OUT, 'reduced-p03.png') });
-    await gotoSettled(page, 3, 1500);
+    await gotoPage(page, 'p04', 1500);
     await page.locator('.scratch canvas').first().click();
     await sleep(800);
     const rev = await page.evaluate(() => document.querySelector('.scratch').dataset.revealed === '1');
@@ -422,7 +449,11 @@ async function perf(browser) {
     else bytes += sizes[id];
   }
   ok('perf: first view under 1.5 MB (excluding audio)', bytes < 1.5 * 1024 * 1024, `${(bytes / 1024).toFixed(0)} KB (+ ${(audioBytes / 1024).toFixed(0)} KB audio preloaded after first paint)`);
+  // frame rate: without audio (the headless audio device can crash the renderer under throttling)
+  await page.goto(BASE + '/?music=0');
+  await waitCover(page);
   await page.mouse.click(vp.width / 2, vp.height / 2);
+  await sleep(1000);
   await sleep(3200);
   await client.send('Emulation.setCPUThrottlingRate', { rate: 4 });
   const H = await pageH(page);

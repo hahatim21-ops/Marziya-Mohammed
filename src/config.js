@@ -28,7 +28,7 @@ export const CONFIG = {
   },
   music: {
     sources: ['/audio/alfaaz.m4a', '/audio/alfaaz.mp3'],
-    startAt: 0,
+    startAt: 2.11, // seconds into the track where the music starts (and loops back to)
     volume: 0.6,
     fadeInMs: 2500,
   },

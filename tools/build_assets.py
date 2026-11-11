@@ -237,6 +237,16 @@ CHANDELIER_ZONES = {
     'p06': [(0, 30, 0, 32), (70, 100, 0, 32), (36, 64, 0, 15)],
 }
 
+# Chandelier sway: each chandelier is a few rectangles (x0, x1, y0, y1 in %) that stop
+# above the urns and flowers, hanging from the top of the plate, with its own phase.
+SWAY = {
+    'p02': [([(0, 28, 0, 16), (0, 24, 16, 31)], 0.0), ([(72, 100, 0, 16), (76, 100, 16, 33)], 2.1), ([(38, 62, 0, 13)], 4.0)],
+    'p03': [([(0, 27, 0, 19)], 0.0), ([(73, 100, 0, 20)], 2.1), ([(40, 60, 0, 7)], 4.0)],
+    'p04': [([(0, 30, 0, 17), (0, 21, 17, 34)], 0.0), ([(70, 100, 0, 17), (79, 100, 17, 35)], 2.1), ([(40, 60, 0, 15)], 4.0)],
+    'p05': [([(0, 22, 0, 25)], 0.0), ([(78, 100, 0, 25)], 2.1), ([(42, 60, 0, 10)], 4.0)],
+    'p06': [([(0, 28, 0, 14), (0, 21, 14, 31)], 0.0), ([(72, 100, 0, 14), (77, 100, 14, 32)], 2.1), ([(40, 60, 0, 13)], 4.0)],
+}
+
 # Areas where bright highlights are not candles (the couple's clothing on page 03).
 NO_CANDLE = {
     'p03': [(25, 76, 58, 100)],
@@ -389,6 +399,8 @@ def build_fx(pid, rgb, page, cores, manifest):
                   os.path.join(OUT, pid, 'floor.webp'), quality=80)
         fx['floor'] = 'img/%s/floor.webp' % pid
 
+    fx['sway'] = [{'rects': [list(r) for r in rects], 'phase': ph, 'bottom': max(r[3] for r in rects)} for rects, ph in SWAY.get(pid, [])]
+
     with open(os.path.join(OUT, 'fx-%s.json' % pid), 'w') as f:
         json.dump(fx, f, separators=(',', ':'))
     manifest['pages'][pid]['fxData'] = {k: v for k, v in fx.items()}
@@ -474,6 +486,29 @@ def build_cover(manifest):
     mx0, mx1, my0, my1 = max(0, mb[0] - pad), min(W, mb[1] + pad), max(0, mb[2] - pad), min(H, mb[3] + pad)
     ma = np.clip(mono_soft[my0:my1, mx0:mx1], 0, 255).astype(np.uint8)
     save_webp(np.dstack([np.full_like(ma, 255)] * 3 + [ma]), os.path.join(cdir, 'monogram-mask.webp'), quality=80, alpha_quality=80)
+    # letter mask for the burgundy "ink" fill: the embossed letter faces are brighter
+    # than the textured paper. Work at 3x for smooth edges, add the shadow side that
+    # touches each face, then grow ~2.5px to cover the bevel.
+    up = 3
+    big = cv2.resize(rgb, (W * up, H * up), interpolation=cv2.INTER_CUBIC)
+    Ls = cv2.GaussianBlur(luminance(big), (0, 0), 1.6 * up)
+    inside_big = cv2.resize((dist > 22 * s).astype(np.uint8) * 255, (W * up, H * up), interpolation=cv2.INTER_NEAREST) > 0
+    paper_l = float(np.median(Ls[inside_big]))
+    fm = ((Ls > paper_l + 7) & inside_big).astype(np.uint8) * 255
+    fm = cv2.morphologyEx(fm, cv2.MORPH_OPEN, ellipse(2 * up + 1))
+    n, lab, stats, _ = cv2.connectedComponentsWithStats(fm, 8)
+    keep = np.zeros(n, bool)
+    keep[1:] = stats[1:, 4] > 120 * up * up * s * s
+    fm = keep[lab].astype(np.uint8) * 255
+    dark = ((Ls < paper_l - 6) & inside_big).astype(np.uint8) * 255
+    fm = np.maximum(fm, cv2.bitwise_and(dark, cv2.dilate(fm, ellipse(3 * up + 1))))
+    fm = cv2.morphologyEx(fm, cv2.MORPH_CLOSE, ellipse(2 * up + 1))
+    fm = cv2.dilate(fm, ellipse(int(5 * up * s) | 1))
+    fm = cv2.GaussianBlur(fm.astype(np.float32), (0, 0), 0.9 * up)
+    fm = np.clip((fm - 110) * 2.4, 0, 255)
+    fm = cv2.resize(fm, (W, H), interpolation=cv2.INTER_AREA)
+    fa = np.clip(fm[my0:my1, mx0:mx1], 0, 255).astype(np.uint8)
+    save_webp(np.dstack([np.full_like(fa, 255)] * 3 + [fa]), os.path.join(cdir, 'monogram-fill.webp'), quality=82, alpha_quality=90)
     # SVG outline for the loader (traced from the actual monogram, not retyped)
     sm = cv2.morphologyEx(mono, cv2.MORPH_CLOSE, ellipse(int(3 * s) | 1))
     cnts, _ = cv2.findContours(sm[my0:my1, mx0:mx1], cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
@@ -513,6 +548,8 @@ def build_cover(manifest):
         'front': 'img/cover/cover-front.webp', 'inner': 'img/cover/inner-page.webp',
         'back': 'img/cover/cover-back.webp', 'velvet': 'img/cover/velvet.webp',
         'monogramMask': 'img/cover/monogram-mask.webp',
+        'monogramFill': 'img/cover/monogram-fill.webp',
+        'burgundy': '#7A1626',
     }
 
 

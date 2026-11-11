@@ -64,16 +64,16 @@ function buildLoader() {
 /** Position the cover parts for the current layout. */
 export function layoutCover() {
   const o = MANIFEST.cover.oval;
-  const cx = L.plateX + (o.cx / 100) * L.plateW;
-  const cy = L.plateY + (o.cy / 100) * L.plateH;
+  const cx = L.coverX + (o.cx / 100) * L.coverW;
+  const cy = L.coverY + (o.cy / 100) * L.coverH;
   coverEl.style.setProperty('--ring-x', cx + 'px');
   coverEl.style.setProperty('--ring-y', cy + 'px');
-  coverEl.style.setProperty('--ring-w', (2 * o.rx / 100) * L.plateW + 'px');
-  coverEl.style.setProperty('--ring-h', (2 * o.ry / 100) * L.plateH + 'px');
+  coverEl.style.setProperty('--ring-w', (2 * o.rx / 100) * L.coverW + 'px');
+  coverEl.style.setProperty('--ring-h', (2 * o.ry / 100) * L.coverH + 'px');
   // the die-cut hole is the cream oval inset by ~2px of the 941px-wide cover
-  const inset = (2 / 941) * L.plateW;
-  coverEl.style.setProperty('--win-w', (2 * o.rx / 100) * L.plateW - 2 * inset + 'px');
-  coverEl.style.setProperty('--win-h', (2 * o.ry / 100) * L.plateH - 2 * inset + 'px');
+  const inset = (2 / 941) * L.coverW;
+  coverEl.style.setProperty('--win-w', (2 * o.rx / 100) * L.coverW - 2 * inset + 'px');
+  coverEl.style.setProperty('--win-h', (2 * o.ry / 100) * L.coverH - 2 * inset + 'px');
   coverPlate.style.transformOrigin = `${o.cx}% ${o.cy}%`;
   const inner = byId.p01 && byId.p01.inner;
   if (inner) inner.style.transformOrigin = `${cx}px ${cy}px`;
@@ -196,6 +196,7 @@ export function initOpening(opts) {
     if (instant) {
       gsap.set(inner.inner, { scale: 1 });
       gsap.set(inner.dim, { opacity: 0 });
+      gsap.set(inner.ui.ink, { '--level': '100%' });
       finish();
       unlock();
       return;
@@ -206,8 +207,10 @@ export function initOpening(opts) {
       tl.to(label, { opacity: 0, duration: 0.2 }, 0);
       tl.to(coverEl, { opacity: 0, duration: 0.8, ease: 'none' }, 0);
       tl.to(inner.dim, { opacity: 0, duration: 0.8 }, 0);
+      tl.set(inner.ui.ink, { '--level': '100%' }, 0);
+      tl.fromTo(inner.ui.fill, { opacity: 0 }, { opacity: 1, duration: 0.6 }, 0.6);
       tl.add(finish, 0.8);
-      tl.add(unlock, 0.9);
+      tl.add(unlock, 1.2);
       return;
     }
 
@@ -246,17 +249,21 @@ export function initOpening(opts) {
     // inner page settles
     tl.to(inner.inner, { scale: 1, duration: 1.8, ease: 'power2.out' }, 0.15);
     tl.to(inner.dim, { opacity: 0, duration: 1.8, ease: 'sine.out' }, 0.15);
-    // 2.00 remove the cover, light sweep across the embossed M&U, petals begin
+    // 1.45 as the cover clears the monogram, burgundy ink fills the embossed M&U
+    // from the bottom up while small petals drift down
+    tl.add(() => { if (opts.onFillStart) opts.onFillStart(); }, 1.45);
+    tl.fromTo(inner.ui.ink, { '--level': '0%' }, { '--level': '100%', duration: 2.2, ease: 'power1.inOut' }, 1.5);
+    // 2.00 remove the cover
+    tl.add(finish, 2.0);
+    // 3.55 scrolling unlocks as the fill completes; a light sweep crosses the monogram
+    tl.add(unlock, 3.55);
     tl.add(() => {
-      finish();
       const sw = inner.ui.sweep;
       gsap.fromTo(sw, { opacity: 1, backgroundPosition: '100% 0' }, {
         backgroundPosition: '0% 0', duration: 1.5, ease: 'sine.inOut',
         onComplete: () => gsap.set(sw, { opacity: 0 }),
       });
-    }, 2.0);
-    // 2.40 unlock scrolling
-    tl.add(unlock, 2.4);
+    }, 3.65);
     window.__openTl = tl; // QA: lets screenshots seek to exact times
   }
 
