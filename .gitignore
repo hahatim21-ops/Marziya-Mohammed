@@ -1,0 +1,7 @@
+node_modules/
+dist/
+tools/.cache/
+tools/__pycache__/
+qa-shots/
+.netlify/
+.vercel/

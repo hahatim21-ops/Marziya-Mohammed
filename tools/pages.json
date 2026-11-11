@@ -1,0 +1,68 @@
+{
+  "_comment": "Approximate line boxes in % of the plate (x0,x1,y0,y1). build_assets.py refines them from pixels and writes the tight boxes to public/img/manifest.json.",
+  "plate": { "w": 1449, "h": 2576 },
+  "pages": [
+    {
+      "id": "p02", "src": "02-bismillah.jpg", "polarity": "dark",
+      "sr": "Bismillah ir-Rahman ir-Rahim. In the name of Allah, the most beneficial, the most merciful. With the blessings of Late Jamal Abdullah & Late Hawabibi Jamal, Late Siddik Merchant & Sofiya Siddik Merchant.",
+      "lines": [
+        { "id": "b1", "text": "Bismillah calligraphy (Arabic)", "type": "arabic", "box": [26.0, 74.6, 32.0, 38.5], "loose": true, "slackx": 0, "maxCompG": 60, "exclude": [[0, 25.35, 30, 40]] },
+        { "id": "b2", "text": "IN THE NAME OF ALLAH,", "type": "caps", "box": [27, 73, 40.8, 42.6] },
+        { "id": "b3", "text": "THE MOST BENEFICIAL , THE MOST", "type": "caps", "box": [18.5, 81.5, 43.6, 45.8], "maxCompG": 70 },
+        { "id": "b4", "text": "MERCIFUL", "type": "caps", "box": [39, 61, 46.6, 48.5] },
+        { "id": "b5", "text": "WITH THE BLESSINGS OF", "type": "caps", "box": [24, 76, 52.0, 54.0] },
+        { "id": "b6", "text": "Late Jamal Abdullah & Late", "type": "italic", "box": [20, 80, 56.5, 59.6] },
+        { "id": "b7", "text": "Hawabibi Jamal", "type": "italic", "box": [32, 68, 60.8, 63.9] },
+        { "id": "b8", "text": "Late Siddik Merchant & Sofiya", "type": "italic", "box": [18, 82, 65.0, 68.2] },
+        { "id": "b9", "text": "Siddik Merchant", "type": "italic", "box": [32, 68, 69.3, 72.4] }
+      ]
+    },
+    {
+      "id": "p03", "src": "03-names.jpg", "polarity": "dark",
+      "sr": "Mr & Mrs Saba & Faisal Motiwala cordially invite you for the wedding ceremony of their daughter Marziya & Mohammed Umar (S/O Taskeen & Farooq Memon).",
+      "lines": [
+        { "id": "n1", "text": "MR & MRS SABA & FAISAL MOTIWALA", "type": "caps", "box": [23, 76, 24.2, 25.9] },
+        { "id": "n2", "text": "CORDIALLY INVITE YOU FOR THE WEDDING", "type": "caps", "box": [19, 81, 26.5, 28.1] },
+        { "id": "n3", "text": "CEREMONY OF THEIR DAUGHTER", "type": "caps", "box": [25, 75, 28.6, 30.3] },
+        { "id": "n4", "text": "Marziya", "type": "script", "box": [24, 71, 32.0, 42.4], "loose": true, "slacky": 0 },
+        { "id": "n5", "text": "&", "type": "amp", "box": [44, 57, 42.6, 47.8], "loose": true, "slacky": 0 },
+        { "id": "n6", "text": "Mohammed Umar", "type": "script", "box": [16.0, 85, 48.8, 54.0], "padx": 0.4, "slackx": 0, "corridor": {"zoneX": 22.5, "width": 7, "pts": [[18.22, 52.33], [18.63, 52.64], [19.46, 52.83], [20.57, 52.76], [21.33, 52.37], [21.6, 51.79], [21.12, 51.16], [20.08, 50.89], [18.77, 50.97], [17.81, 51.28], [17.25, 51.79], [16.91, 52.33], [16.98, 52.87], [17.39, 53.3], [18.22, 53.53], [19.32, 53.57], [20.5, 53.42], [21.53, 53.11], [22.22, 52.8], [23.33, 52.21], [24.29, 51.63]]} },
+        { "id": "n7", "text": "( S/O TASKEEN & FAROOQ MEMON )", "type": "caps", "box": [24, 76, 55.4, 57.1] }
+      ]
+    },
+    {
+      "id": "p04", "src": "04-scratch-date.jpg", "polarity": "light",
+      "sr": "Scratch to reveal the date! 3rd & 4th December. Countdown until the big day!",
+      "lines": [
+        { "id": "s1", "text": "SCRATCH TO REVEAL", "type": "caps", "box": [24, 76, 36.5, 39.0], "exclude": [[0, 25.2, 0, 100], [74.67, 100, 0, 100], [73.4, 74.67, 34.9, 38.08]] },
+        { "id": "s2", "text": "THE DATE !", "type": "caps", "box": [36, 64, 40.4, 42.7] },
+        { "id": "s3", "text": "COUNTDOWN UNTIL THE BIG", "type": "caps", "box": [15, 85, 66.6, 69.5] },
+        { "id": "s4", "text": "DAY !", "type": "caps", "box": [42, 58, 70.8, 73.0] }
+      ],
+      "keep": [ { "id": "date", "box": [24, 76, 47.4, 58.8] } ]
+    },
+    {
+      "id": "p05", "src": "05-events.jpg", "polarity": "light",
+      "sr": "Nikah: 03 December 2026, after Namaz e Isha, Akash Masjid, Ghas Gali, Agripada. Reception: 04 December 2026, 8:30 PM onwards, Bay View Islam Gymkhana.",
+      "lines": [
+        { "id": "e1", "text": "Nikah", "type": "script", "phase": "A", "box": [33, 69, 15.3, 21.6], "glow": 64 },
+        { "id": "e2", "text": "03 DECEMBER 2026", "type": "caps", "phase": "A", "box": [23, 81, 24.1, 27.0] },
+        { "id": "e3", "text": "AFTER NAMAZ E ISHA", "type": "caps", "phase": "A", "box": [24, 76, 30.3, 32.6] },
+        { "id": "e4", "text": "AKASH MASJID, GHAS GALI", "type": "caps", "phase": "A", "box": [20, 83, 35.5, 37.9] },
+        { "id": "e5", "text": "AGRIPADA", "type": "caps", "phase": "A", "box": [38, 66, 39.2, 41.3] },
+        { "id": "e6", "text": "Reception", "type": "script", "phase": "B", "box": [28, 74, 48.9, 56.1], "glow": 64 },
+        { "id": "e7", "text": "04 DECEMBER 2026", "type": "caps", "phase": "B", "box": [21, 79, 57.6, 60.6] },
+        { "id": "e8", "text": "8:30 PM ONWARDS", "type": "caps", "phase": "B", "box": [28, 72, 62.5, 64.8] },
+        { "id": "e9", "text": "BAY VIEW ISLAM GYMKHANA", "type": "caps", "phase": "B", "box": [17, 83, 67.3, 69.7] }
+      ]
+    },
+    {
+      "id": "p06", "src": "06-regards.jpg", "polarity": "light",
+      "sr": "Regards, Motiwala's.",
+      "lines": [
+        { "id": "r1", "text": "Regards,", "type": "italic", "box": [37, 63, 39.2, 43.3], "glow": 48 },
+        { "id": "r2", "text": "Motiwala's", "type": "script", "box": [14, 81, 45.0, 52.2], "exclude": [[0, 15.0, 0, 100], [80.2, 100, 0, 100], [70, 100, 0, 44.8]] }
+      ]
+    }
+  ]
+}

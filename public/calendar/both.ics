@@ -1,0 +1,45 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Marziya & Mohammed Umar//Wedding Invitation//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+BEGIN:VEVENT
+UID:nikah-20261203T143000Z@marziya-mohammed-umar
+DTSTAMP:20261111T155026Z
+DTSTART:20261203T143000Z
+DTEND:20261203T163000Z
+SUMMARY:Nikah · Marziya & Mohammed Umar
+LOCATION:Akash Masjid\, Ghas Gali\, Agripada
+DESCRIPTION:Wedding of Marziya & Mohammed Umar. Hosted by Mr & Mrs Saba & 
+ Faisal Motiwala.\n03 December 2026 · After Namaz-e-Isha\nMap: https://ww
+ w.google.com/maps/search/?api=1&query=Akash%20Masjid%2C%20Ghas%20Gali%2C%
+ 20Agripada%2C%20Mumbai
+URL:https://www.google.com/maps/search/?api=1&query=Akash%20Masjid%2C%20Gh
+ as%20Gali%2C%20Agripada%2C%20Mumbai
+BEGIN:VALARM
+TRIGGER:-P1D
+ACTION:DISPLAY
+DESCRIPTION:Tomorrow: Nikah
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:reception-20261204T150000Z@marziya-mohammed-umar
+DTSTAMP:20261111T155026Z
+DTSTART:20261204T150000Z
+DTEND:20261204T180000Z
+SUMMARY:Reception · Marziya & Mohammed Umar
+LOCATION:Bay View\, Islam Gymkhana\, Marine Drive
+DESCRIPTION:Wedding of Marziya & Mohammed Umar. Hosted by Mr & Mrs Saba & 
+ Faisal Motiwala.\n04 December 2026 · 8:30 PM onwards\nMap: https://www.g
+ oogle.com/maps/search/?api=1&query=Bay%20View%2C%20Islam%20Gymkhana%2C%20
+ Netaji%20Subhash%20Chandra%20Bose%20Road%2C%20Marine%20Lines%2C%20Mumbai
+URL:https://www.google.com/maps/search/?api=1&query=Bay%20View%2C%20Islam%
+ 20Gymkhana%2C%20Netaji%20Subhash%20Chandra%20Bose%20Road%2C%20Marine%20Li
+ nes%2C%20Mumbai
+BEGIN:VALARM
+TRIGGER:-P1D
+ACTION:DISPLAY
+DESCRIPTION:Tomorrow: Reception
+END:VALARM
+END:VEVENT
+END:VCALENDAR

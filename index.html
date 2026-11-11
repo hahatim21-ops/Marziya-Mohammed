@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en" class="is-locked is-loading">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Marziya &amp; Mohammed Umar · Wedding Invitation</title>
+  <meta name="description" content="Nikah · 3 December 2026 | Reception · 4 December 2026 | Mumbai" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="theme-color" content="#3B0810" />
+  <meta name="color-scheme" content="dark" />
+
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Marziya &amp; Mohammed Umar · Wedding Invitation" />
+  <meta property="og:description" content="Nikah · 3 December 2026 | Reception · 4 December 2026 | Mumbai" />
+  <meta property="og:image" content="/img/og.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Burgundy embossed invitation cover with the M&amp;U monogram" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Marziya &amp; Mohammed Umar · Wedding Invitation" />
+  <meta name="twitter:description" content="Nikah · 3 December 2026 | Reception · 4 December 2026 | Mumbai" />
+  <meta name="twitter:image" content="/img/og.jpg" />
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/img/icons/icon-32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/img/icons/icon-16.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/img/icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="/img/icons/icon-180.png" />
+
+  <link rel="preload" as="font" type="font/woff2" crossorigin="anonymous" href="/node_modules/@fontsource/cormorant-garamond/files/cormorant-garamond-latin-600-normal.woff2" />
+  <link rel="preload" as="image" href="/img/cover/cover-front.webp" fetchpriority="high" crossorigin="anonymous" />
+  <link rel="preload" as="image" href="/img/cover/inner-page.webp" fetchpriority="high" />
+  <link rel="preload" as="image" href="/img/p02/plate-1080.webp" imagesrcset="/img/p02/plate-1080.webp 1080w, /img/p02/plate-1449.webp 1449w" imagesizes="(min-width: 601px) 470px, 130vw" />
+
+  <script>
+    // Always start at the cover.
+    try { history.scrollRestoration = 'manual'; } catch (e) {}
+    window.scrollTo(0, 0);
+    document.documentElement.style.setProperty('--vh', window.innerHeight * 0.01 + 'px');
+  </script>
+</head>
+<body>
+  <div id="backdrop" aria-hidden="true">
+    <img class="bd-img is-on" alt="" />
+    <img class="bd-img" alt="" />
+  </div>
+
+  <div id="frame">
+    <div id="scroller">
+      <main id="stack" aria-label="Wedding invitation"></main>
+    </div>
+
+    <canvas id="petals" class="layer layer-fx" aria-hidden="true"></canvas>
+    <canvas id="dust" class="layer layer-fx" aria-hidden="true"></canvas>
+
+    <div id="scroll-hint" class="ui-hint" aria-hidden="true">
+      <span class="sh-line"><span class="sh-dot"></span></span>
+      <span class="sh-text"></span>
+    </div>
+
+    <div id="cover" class="layer" role="button" tabindex="0" aria-label="Tap to open the invitation">
+      <div class="cover-shadow" aria-hidden="true"></div>
+      <div class="cover-window-shadow" aria-hidden="true"></div>
+      <div class="cover-edge-shadow" aria-hidden="true"></div>
+      <div class="cover-leaf" aria-hidden="true">
+        <div class="cover-face cover-front">
+          <div class="cover-clip">
+            <div class="cover-plate">
+              <img class="cover-img" alt="" decoding="async" />
+              <div class="cover-sheen"></div>
+              <div class="cover-shade"></div>
+            </div>
+          </div>
+        </div>
+        <div class="cover-face cover-back">
+          <img class="cover-back-img" alt="" decoding="async" />
+        </div>
+      </div>
+      <div class="cover-ring" aria-hidden="true"></div>
+      <div class="tap-label" aria-hidden="true">Tap to open</div>
+    </div>
+
+    <div id="loader" class="layer" aria-hidden="true">
+      <svg class="loader-mono" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+
+    <button id="music" type="button" aria-pressed="false" hidden>
+      <span class="eq" aria-hidden="true"><i></i><i></i><i></i></span>
+      <span class="music-note" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M9 17.5a2.5 2.5 0 1 1-2-2.45V5l11-2v11.5a2.5 2.5 0 1 1-2-2.45V6.4l-7 1.27z"/></svg>
+      </span>
+      <span class="music-tip" aria-hidden="true"></span>
+    </button>
+
+    <div id="sheet-root"></div>
+  </div>
+
+  <audio id="audio" preload="none" loop playsinline></audio>
+
+  <noscript>
+    <p style="color:#F6E9DC;font:16px/1.5 serif;padding:24px;text-align:center">
+      This invitation needs JavaScript. Nikah · 3 December 2026 · Reception · 4 December 2026 · Mumbai.
+    </p>
+  </noscript>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
